@@ -109,7 +109,7 @@ USE lesson;
 
 #### `MyISAM`和`InnoDB`的区别
 
-| 名称       | `MyISAM` | ``MyISAM``  |
+| 名称       | `MyISAM` | `InnoDB`    |
 | :--------- | :------- | :---------- |
 | 事务处理   | 不支持   | 支持        |
 | 数据行锁定 | 不支持   | 支持        |
@@ -240,11 +240,11 @@ CREATE TABLE IF NOT EXISTS student(
 **1. 在数据库exercise中创建课程表`stu_course`，包含字段课程编号(number)，类型为整数，长度为11，是主键，自增长，非空；课程名称(name)，类型为字符串，长度为20，非空；学分(score)， 类型为浮点数，小数点后面保留2位有效数字，长度为5， 非空**
 
    ```sql
-	--如果数据库不存在则创建数据库
+	-- 如果数据库不存在则创建数据库
 	CREATE DATABASE IF NOT EXISTS exercise DEFAULT CHARACTER SET UTF8 COLLATE UTF8_GENERAL_CI;
-	--使用数据库
+	-- 使用数据库
 	USE exercise;
-	--在数据库中创建数据表stu_course
+	-- 在数据库中创建数据表stu_course
 	CREATE TABLE IF NOT EXISTS stu_course(
 		`number` INT(11) AUTO_INCREMENT NOT NULL PRIMARY KEY COMMENT '课程编号',
 	    name VARCHAR(20) NOT NULL COMMENT '课程名称',
@@ -335,7 +335,7 @@ UPDATE 表名 SET 字段名1=字段值1[,字段名2=字段值2, ..., 字段名n=
 
 ```sql
 WHERE time > 20 AND time < 60; 
---等价于
+-- 等价于
 WHERE time > 20 && time < 60;
 ```
 
@@ -362,7 +362,7 @@ DELETE FROM course WHERE 'number'=1;
 ### 5. TRUNCATE语句
 
 ```sql
---清空表中的数据
+-- 清空表中的数据
 TRUNCATE [TABLE] 表名;
 ```
 
@@ -400,11 +400,11 @@ SELECT ALL/DISTINCT * | 字段名1 AS 别名1[,字段名1 AS 别名1, ..., 字�
 SELECT name FROM course WHERE `number` < 5;
 SELECT score, `time` FROM course name='Java';
 SELECT score AS '学分', `time` AS '学时' FROM course name='Java';
---AS可以省略
+-- AS可以省略
 SELECT score '学分', `time` '学时' FROM course name='Python';
---给表起别名
+-- 给表起别名
 SELECT c.name, c.score, c.time FROM course c WHERE c.name='Java';
---给表起别名的同时给字段重命名
+-- 给表起别名的同时给字段重命名
 SELECT c.name '课程名称', c.score '学分', c.time '学时' FROM course c WHERE c.name='Python';
 ```
 
@@ -434,7 +434,7 @@ SELECT * FROM coures WHERE name IS NOT NULL;
 
 ```sql
 SELECT * FROM course WHERE score BETWEEN 2 AND 4;
---等价于
+-- 等价于
 SELECT * FROM course WHERE score >= 2 ANDE score <= 4;
 ```
 
@@ -578,8 +578,8 @@ SELECT * FROM student WHERE age BETWEEN 18 AND 22 GROUP BY sex HAVING AVG(score)
 
 ```sql
 SELECT ALL/DISTINCT * | 字段名1 AS 别名1[,字段名1 AS 别名1, ..., 字段名n AS 别名n] FROM 表名 WHERE 查询条件 ORDER BY 字段名1 ASC|DESC，字段名2 ASC|DESC,..., 字段名n ASC|DESC;
---DESC : 降序排序
---ASC : 升序排序
+-- DESC : 降序排序
+-- ASC : 升序排序
 ```
 
 > 注：`ORDER BY`必须位于`WHERE` 条件之后。
@@ -690,8 +690,6 @@ SELECT * FROM emp ORDER BY salary DESC LIMIT 5, 5;
 
 
 # 第三章 `MySQL`常用函数
-
-
 
 ## 第一节 常用数学函数
 
@@ -902,6 +900,8 @@ SELECT FORMAT(1.2353, 2);
 | USER()<br/>SYSTEM_USER()<br/>SESSION_USER() | 获取当前用户名     | SELECT USER();<br/>SELECT SYSTEM_USER();<br/>SELECT SESSION_USER(); |
 | CURRENT_USER()<br/>CURRENT_USER             | 获取当前用户名     | SELECT CURRENT_USER;                                         |
 
+
+
 ##  第六节 综合练习
 
 **1. 求字符串`'ABCdEfGHIJkLMn'`的字符数**
@@ -935,8 +935,6 @@ SELECT IF(score > 90, '优秀', '良好') score;
 
 
 # 第四章 联表查询
-
-
 
 ## 第一节 表与表之间的关系
 
@@ -981,8 +979,6 @@ CREATE TABLE IF NOT EXISTS stu(
 
 
 ### 4. 约束
-
-
 
 #### 4.1 主键约束
 
@@ -1109,6 +1105,8 @@ CREATE TABLE IF NOT EXISTS stu(
   ALTER TABLE 表名 MODIFY 字段名 列类型;
   ```
 
+
+
 ## 第二节 索引
 
 ### 1. 什么是索引
@@ -1168,6 +1166,8 @@ CREATE TABLE IF NOT EXISTS stu(
 - 不要在列上进行运算（包括函数运算），这会忽略索引的使用
 - 不建议使用`LIKE`操作，如果非使用不可，注意正确的使用方式。`LIKE '%查询内容%' `不会使用索引，而`LIKE '查询内容%'`可以使用索引
 - 避免使用`IS NULL`、`NOT IN`、`<>`、`!=`、`OR`操作，这些操作都会忽略索引而进行全表扫描
+
+
 
 ## 第三节 多表查询
 
@@ -1302,6 +1302,8 @@ WHERE b.score=(SELECT MAX(score) FROM score WHERE course='Java')
 AND b.course='Java';
 ```
 
+
+
 ### 第五节 综合练习
 
 **1. 查询有哪些分类**
@@ -1426,8 +1428,6 @@ SELECT age;
 
 
 ## 第二节 存储过程
-
-
 
 ### 1. 存储过程的概念
 
@@ -1610,7 +1610,7 @@ SELECT @result;
 
 `MySQL`本身提供了一些内置函数，这些函数给我们日常的开发和数据操作带来了很大的便利，比如聚合函数`SUM()`、`AVG()`以及日期时间函数等。但这并不能完全满足开发的需要，有时我们需要一个函数来完成一些复杂功能的实现，而 `MySQL`中又没有这样的函数，因此，我们需要自定义函数来实现。
 
-#### 3. 如何使用自定义函数
+### 3. 如何使用自定义函数
 
 ```sql
 CREATE FUNCTION 函数名称 (参数名1 数据类型, 参数名2 数据类型, ..., 参数名n 数据类型]) RETURNS 数据类型
@@ -1643,7 +1643,7 @@ END
 SELECT getMaxDiff();
 ```
 
-#### 4. 循环结构
+### 4. 循环结构
 
 ```sql
 WHILE 循环条件 DO
@@ -1740,6 +1740,60 @@ BEGIN
 END
 ```
 
+### 5. 函数和存储过程的区别
+
+> 注：此部分内容选自 [函数和存储过程的区别 - 随情 - 博客园](https://www.cnblogs.com/shanzzs/p/10677810.html)
+
+- **函数和存储过程的优点：**
+
+　　1、共同使用的代码可以只需要被编写一次，而被需要该代码的任何应用程序调用（.net, C++, Java，也可以使`DLL`库）。
+
+　　2、这种几种编写、几种维护更新、大家共享的方法，简化了应用程序的开发维护，提高了效率和性能。
+
+　　3、这种模块化的方法使得一个复杂的问题、大的程序逐步简化成几个简单的、小的程序部分，进行分别编写，因此程序的结构更加清晰，简单，也容易实现。
+
+　　4、可以在各个开发者之间提供处理数据、控制流程、提示信息等方面的一致性。
+
+　　5、节省内存空间。它们以一种压缩的形式被存储在外存中，当被调用时才被放入内存进行处理。而且多个用户在调用同一个存储过程或函数时，只需要加载一次即可。
+
+　　6、提高数据的安全性和完整性。通过把一些对数据的操作方到存储过程或函数中，就可以通过是否授予用户有执行该语句的权限，来限制某些用户对数据库进行这些操作。
+
+- **函数和存储过程的区别**：
+
+　　1、存储过程用户在数据库中完成特定操作或者任务（如插入，删除等），函数用于返回特定的数据。
+
+　　2、存储过程声明用`PROCEDURE`，函数用`FUNCTION`。
+
+　　3、存储过程不需要返回类型，函数必须要返回类型。
+
+　　4、存储过程可作为独立的pl-sql执行，函数不能作为独立的plsql执行，必须作为表达式的一部分。
+
+　　5、存储过程只能通过out和in/out来返回值，函数除了可以使用out，in/out以外，还可以使用return返回值。
+
+　　6、SQL语句（`DML`或SELECT)中不可用调用存储过程，而函数可以。
+
+- **适用场合**：
+
+　　1、如果需要返回多个值和不返回值，就使用存储过程；如果只需要返回一个值，就使用函数。
+
+　　2、存储过程一般用于执行一个指定的动作，函数一般用于计算和返回一个值。
+
+　　3、可以再SQL内部调用函数来完成复杂的计算问题，但不能调用存储过程。
+
+- **存储过程与存储函数的区别和联系**
+
+　　相同点：1.创建语法结构相似，都可以携带多个传入参数和传出参数。
+
+　　　　    	2.都是一次编译，多次执行。
+
+　　不同点：1.存储过程定义关键字用`PROCEDURE`，函数定义用`FUNCTION`。
+
+　　　　　　2.存储过程中**不能用**`RETURN`返回值，但函数中可以，而且函数中**必须有**`RETURN`子句。
+
+　　　　　　3.执行方式略有不同，存储过程的执行方式有两种（1.使用execute 2.使用begin和end），函数除了存储过程的两种方式						  外，还可以当做表达式使用，例如放在select中（ SELECT f1() FROM dual; ）。
+
+- **总结：如果只有一个返回值，用存储函数，否则，一般用存储过程。**
+
 
 
 ## 第四节 触发器
@@ -1824,7 +1878,7 @@ UPDATE `order` SET sale_count = sale_count - 4 WHERE id=20;
 
 ### 1. 视图的概念
 
-视图是一张虚拟表，本身并不存储数据，当 `SQL`操作视图时所有数据都是从其他表中查出来，运用了封装的思想，实质类似与 子查询
+视图是一张虚拟表，本身并不存储数据，当 `SQL`操作视图时所有数据都是从其他表中查出来，运用了封装的思想，实质类似于 子查询并重命名
 
 ### 2. 如何使用视图
 
@@ -1848,7 +1902,7 @@ UPDATE `order` SET sale_count = sale_count - 4 WHERE id=20;
 
 ### 3. 为什么使用视图
 
-#### 3.1 定制用户数据，聚焦特定的数据。
+- **定制用户数据，聚焦特定的数据**
 
 <font color=blue>示例</font>：如果频繁获取销售人员编号、姓名和代理商名称，可以创建视图
 
@@ -1868,7 +1922,7 @@ WHERE
 SELECT id, saleName FROM salesInfo;
 ```
 
-#### 3.2 简化数据操作。
+- **简化数据操作**
 
 <font color=blue>示例</font>：进行关联查询时，涉及到的表可能会很多，这时写的 `SQL`语句可能会很长，如果这个动作频繁发生的话，可以创建视图
 
@@ -1900,7 +1954,7 @@ AND d.goods_id = e.id;
 SELECT * FROM searchOrderDetail;
 ```
 
-#### 3.3 提高安全性能。
+- **提高安全性能**
 
 <font color=blue>示例</font>：例如：用户密码属于隐私数据，用户不能直接查看密码。可以使用视图过滤掉这一字段
 
@@ -1919,9 +1973,44 @@ SELECT username, salt FROM userInfo;
 
 > 注：<font color=red>**视图并不能提升查询速度，只是方便了业务开发，但同时也加大了数据库服务器的压力，因此，需要合理的使用视图**</font>
 
----
 
 
+## 第六节 综合练习
+
+**1. 创建存储过程的语法**
+
+```sql
+CREATE PROCEDURE 存储过程的名称(IN|OUT 参数名1 参数类型1, ..., IN|OUT 参数名n 参数类型n)
+BEGIN
+-- 存储过程语句
+END
+```
+
+**2. 创建函数的语法**
+
+```sql
+CREATE FUNCTION 函数名称(参数名1 参数类型1, ..., 参数名n 参数类型n) RETURNS 数据类型
+DETERMINISTIC | NO SQL | READ SQL DATA | CONTAINS SQL
+BEGIN
+
+	RETURN 结果;
+END
+```
+
+**3. 创建触发器的语法**
+
+```sql
+CREATE TRIGGER 触发器名称 BEFORE|AFTER INSERT|UPDATE|DELETE ON 表名 FOR EACH ROW
+BEGIN
+
+END
+```
+
+**4. 创建视图的语法**
+
+```sql
+CREATE OR REPLACE VIEW 视图名称 AS SELECT 语句;
+```
 
 
 
@@ -1931,17 +2020,30 @@ SELECT username, salt FROM userInfo;
 
 ### 1. 什么是实体
 
-
+实体就是软件开发过程中所涉及到的事物，通常都是一类数据对象的个体。
 
 ### 2. 什么是数据库设计
 
-
+数据库设计就是将实体与实体之间的关系进行规划和结构化的过程
 
 ### 3. 为什么要对数据库进行设计
 
-
+当存储的数据比较少的时候，当然不需要对数据库进行设计。但是，当对数据的需求量越来越大时，对数据库的设计就很有必要性了！如果数据库的设计不当，会造成数据冗余、修改复杂、操作数据异常等问题。而好的数据库设计，则可以减少不必要的数据冗余，通过合理的数据规划提高系统的性能
 
 ### 4. 如何设计数据库
+
+- **<font color=red>收集信息</font>**
+  在确定客户要做什么之后，收集一切相关的信息，尽量不遗漏任何信息
+
+- **<font color=red>标识实体</font>**
+  实体一般是名词，每个实体只描述一件事情，不能重复出现含义相同的实体
+
+- **<font color=red>标识实体的详细属性</font>**
+
+  标识每个实体需要存储的详细信息
+
+- **<font color=red>标识实体之间的关系</font>**
+  理清实体与实体之间的关系
 
 
 
@@ -1949,7 +2051,9 @@ SELECT username, salt FROM userInfo;
 
 ### 1. 什么是 ER 图
 
+ER = Entity Relational （实体关系）
 
+ ER图就是实体关系图
 
 ### 2. 如何绘制 ER 图
 
@@ -1959,25 +2063,998 @@ SELECT username, salt FROM userInfo;
 
 ![](./img/表关系4-1.png)
 
+
+
 ## 第三节 数据库模型图
 
 ### 1. 什么是关系模式
 
+实体关系的描述称为关系模式，关系模式通常使用二维表的形式表示
+
+<font color=blue>示例</font>：
+学生（学号，姓名，性别，年龄，所属班级）
+班级（班级编号， 班级名称）
+
 ### 2. 关系模式转为数据库模型图
 
+将关系模式使用Navicat工具转换为数据库模型图，转换步骤如下：
+
+- 将各实体转换为对应的表，将各属性转换为各表对应的列
+- 标识每个表的主键列
+- 在表之间建立主外键，体现实体
+
 ![](./img/数据库模型图5-2.png)
+
+
 
 ## 第四节 数据库三大范式
 
 ### 1. 数据库第一范式
 
+**<font color=red>第一范式是最基本的范式，确保每列保持原子性，也就是每列不可再分</font>**
+
+<font color=blue>示例</font>：
+
 ![](./img/第一范式5-3.png)
 
 ### 2. 数据库第二范式
+
+**<font color=red>第二范式是在第一范式的基础上，每张表的属性完全依赖于主键，也就是每张表只描述一件事情</font>**
+
+<font color=blue>示例</font>：
 
 ![](./img/第二范式5-4.png)
 
 ### 3. 数据库第三范式
 
+**<font color=red>第三范式是在第二范式的基础上，确保每列都直接依赖于主键，而不是间接依赖于主键，也就是不能存在传递依赖。比如A依赖于B，B依赖于C，这样A间接依赖于C</font>**
+
 ![](./img/第三范式5-5.png)
+
+
+
+## 第五节 综合练习
+
+假设某建筑公司要设计一个数据库。公司的业务规则概括说明如下：
+
+- 公司承担多个工程项目，每一项工程有：工程号、工程名称、施工人员等
+- 公司有多名职工，每一名职工有：职工号、姓名、性别、职务（工程师、技术员）等
+- 公司按照工时和小时工资率支付工资，小时工资率由职工的职务决定（例如，技术员的小时工资率与工程师不同）
+
+<font color=blue>分析</font>：
+
+1. 找出实体（工程、员工、职务、工时）
+2. 找出实体关系
+3. 绘制 ER 图，然后将 ER 图转换为数据库模型图
+4. 使用三大范式规范数据库设计
+
+- ER 图
+
+![](./img/ER图5-6.png)
+
+- 数据库模型图
+
+![](./img/数据库模型图5-7.png)
+
+> 此时发现按照数据库模型图回推ER图时会发现关联有误，故需要更改ER图
+
+- 修改后的 ER 图
+
+![](./img/ER图改5-8.png)
+
+<font color=red>**注意：**</font>在实际开发过程中，为了满足性能的需要，数据库的设计可能会打破数据库三大范式的约束。
+
+<font color=red>**以空间换时间：**</font>当数据库中存储的数据越来越多时，查询效率下降，为了提升了查询效率，可能会在表中增加新的字段，此时，数据库的设计就不再满足三大范式。
+
+---
+
+
+
+
+
+# 第七章 `JDBC` 与 反射
+
+## 第一节 `JDBC`
+
+### 1. 概念
+
+`JDBC`(Java Database Connection)是Java数据库连接技术的简称，提供连接数据库的能力。
+
+### 2. `JDBC API`
+
+Java 作为目前世界上最流行的高级开发语言，当然不可能考虑去实现各种数据库的连接与操作。但 Java 语言的开发者对数据库的连接与操作提供了相关的接口，供各大数据库厂商去实现。这些接口位于`java.sql`包中。
+
+#### 2.1 `Driver`
+
+`java.sql.Driver`：数据库厂商提供的 `JDBC`驱动包中必须包含该接口的实现，该接口中就包含连接数据库的功能。
+
+```java
+//根据给定的数据库url地址连接数据库
+Connection connect(String url, java.util.Properties info) throws SQLException;
+```
+
+#### 2.2 `DriverManager`
+
+`java.sql.DriverManager`：数据库厂商的提供的 `JDBC`驱动交给 `DriverManager`来管理， `DriverManager`主要负责获取数据库连接对象 `Connection`
+
+```java
+//通过给定的账号、密码和数据库地址获取一个连接
+public static Connection getConnection(String url, String user,
+                                       String password) throws SQLException;
+```
+
+#### 2.3 `Connection`
+
+`java.sql.Connection`：连接接口，数据库厂商提供的 `JDBC`驱动包中必须包含该接口的实现，该接口主要提供与数据库的交互功能
+
+```java
+//创建一个SQL语句执行对象
+Statement createStatement() throws SQLException;
+//创建一个预处理SQL语句执行对象
+PreparedStatement prepareStatement(String sql) throws SQLException; 
+//创建一个存储过程SQL语句执行对象
+CallableStatement prepareCall(String sql) throws SQLException;
+//设置该连接上的所有操作是否执行自动提交
+void setAutoCommit(boolean autoCommit) throws SQLException;
+//提交该连接上至上次提交以来所作出的所有更改
+void commit() throws SQLException;
+//回滚事务，数据库回滚到原来的状态
+void rollback() throws SQLException;
+//关闭连接
+void close() throws SQLException;
+//设置事务隔离级别
+void setTransactionIsolation(int level) throws SQLException;
+```
+
+```java
+//不支持事务
+int TRANSACTION_NONE             = 0;
+//读取未提交的数据
+int TRANSACTION_READ_UNCOMMITTED = 1;
+//读取已提交的数据
+int TRANSACTION_READ_COMMITTED   = 2;
+//可重复读
+int TRANSACTION_REPEATABLE_READ  = 4;
+//串行化
+int TRANSACTION_SERIALIZABLE     = 8;
+```
+
+#### 2.4 `Statement`
+
+`java.sql.Statement`：SQL语句执行接口，数据库厂商提供的 `JDBC`驱动包中必须包含该接口的实现，该接口主要提供执行 SQL语句的功能
+
+```java
+//执行查询，得到一个结果集
+ResultSet executeQuery(String sql) throws SQLException; 
+//执行更新，得到受影响的行数
+int executeUpdate(String sql) throws SQLException;
+//关闭SQL语句执行器
+void close() throws SQLException;
+//将SQL语句添加到批处理执行SQL列表中
+void addBatch( String sql ) throws SQLException;
+//执行批处理，返回列表中每一条SQL语句的执行结果
+int[] executeBatch() throws SQLException;
+```
+
+#### 2.5 `ResultSet`
+
+`java.sql.ResultSet`：查询结果集接口，数据库厂商提供的 `JDBC`驱动包中必须包含该接口的实现，该接口主要提供查询结果的获取功能
+
+```java
+//光标从当前位置（默认位置位为0）向前移动一行，如果存在数据，则返回true，否则返回false boolean next() throws SQLException;
+//传入 索引 或 列名 都可以得到结果
+//关闭结果集
+void close() throws SQLException;
+//获取指定列的字符串值
+String getString(int columnIndex) throws SQLException;
+String getString(String columnName) throws SQLException;
+//获取指定列的布尔值
+boolean getBoolean(int columnIndex) throws SQLException;
+boolean getBoolean(String columnName) throws SQLException;
+//获取指定列的整数值
+int getInt(int columnIndex) throws SQLException;
+int getInt(String columnName) throws SQLException;
+//获取指定列的对象
+Object getObject(int columnIndex, Class type) throws SQLException;
+Object getObject(String columnName, Class type) throws SQLException;
+//获取结果集元数据：查询结果的列名称、列数量、列别名等等
+ResultSetMetaData getMetaData() throws SQLException;
+//光标从当前位置（默认位置位为0）向后移动一行，如果存在数据，则返回true，否则返回false boolean previous() throws SQLException;
+```
+
+### 3. `JDBC`操作步骤
+
+#### 3.1 引入驱动包
+
+新建工程后，将 `mysql-connector-java.jar`引入工程中
+
+#### 3.2 加载驱动
+
+```java
+//MySQL 5.0
+//Class.forName("com.mysql.jdbc.Driver"); 
+//MySQL 8.0 路径中多一个 .cj
+Class.forName("com.mysql.cj.jdbc.Driver");
+```
+
+#### 3.3 获取连接
+
+```java
+Connection connection = DriverManager.getConnection(url, username, password);
+```
+
+#### 3.4 创建SQL语句执行器
+
+```java
+Statement statement = connection.createStatement();
+```
+
+#### 3.5 执行SQL语句
+
+```java
+//查询
+ResultSet resultSet = statement.executeQuery(sql);
+while(resultSet.next()){
+     //获取列信息
+}
+
+//更新
+int affectedRows = statement.executeUpdate();
+```
+
+#### 3.6 释放资源
+
+```java
+resultSet.close(); 
+statement.close();
+connection.close();
+```
+
+<font color=blue>示例</font>
+
+```java
+public class jdbcTest {
+    public static void main(String[] args) {
+        //jdbc: 使用jdbc链接技术
+        //http://www.baidu.com  (协议://服务器地址)
+        //mysql://localhost3306 使用的时MySQL数据库协议，访问的时本地计算机3306端口
+        //lesson 端口上对应的lesson数据库
+        //?severTimezone=Asia/Shanghai 时区使用的是亚洲的上海
+        String url = "jdbc:mysql://localhost:3306/lesson?serverTimezone=Asia/Shanghai";
+        //MySQL设置的用户名
+        String username = "root";
+        //MySQL设置的用户密码
+        String password = "root";
+        //查询语句
+        String sql = "SELECT account, balance, state FROM account";
+        //更改语句
+        String updateSql = "UPDATE account SET balance = balance + 1000 WHERE account = 123457";
+        //有多条数据,使用对象列表封装存储
+        List<Account> accountList = new ArrayList<>();
+        try {
+            //加载驱动
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            //获取链接
+            Connection connection = DriverManager.getConnection(url, username, password);
+            //在连接上创建sql语句执行器
+            Statement statement = connection.createStatement();
+            //使用执行器执行查询，得到一个结果集
+            ResultSet resultSet = statement.executeQuery(sql);
+
+//            while (resultSet.next()) {//光标移动
+//                //通过列名称获取列的值
+//                String account = resultSet.getString("account");
+//                double balance = resultSet.getDouble(2);
+//                int state = resultSet.getInt("state");
+//                Account account1 = new Account(account, balance, state);
+//                accountList.add(account1);
+//            }
+//            resultSet.close();
+            
+            
+            //执行更新时,返回的都是受影响的行数
+            int  affectedRows = statement.executeUpdate(updateSql);
+            System.out.println(affectedRows);
+			//关闭资源
+            statement.close();
+            connection.close();
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        }
+        //打印对象列表中的数据
+//        accountList.forEach(System.out::println);
+    }
+}
+
+//封装的用户类
+public class Account {
+    private String account;
+
+    private double balance;
+
+    private int state;
+
+    public Account(String account, double balance, int state) {
+        this.account = account;
+        this.balance = balance;
+        this.state = state;
+    }
+
+    @Override
+    public String toString() {
+        return "Account{" +
+                "account='" + account + '\'' +
+                ", balance=" + balance +
+                ", state=" + state +
+                '}';
+    }
+}
+```
+
+### 4. 预处理SQL
+
+在日常开发中，我们经常会根据用户输入的信息从数据库中进行数据筛选，现有 `stu`表数据如下：
+
+|     id     |  name  | sex  | age  |
+| :--------: | :----: | :--: | :--: |
+| `D2021001` | 枫阿雨 |  男  |  19  |
+| `D2021002` | 雨阿枫 |  男  |  20  |
+| `D2021002` | 阿枫雨 |  男  |  22  |
+| `D2021004` | 亚烟雨 |  女  |  21  |
+
+现要根据用户输入的学生姓名查询学生信息。
+
+```java
+Scanner sc = new Scanner(System.in);
+System.out.println("请输入学生姓名：");
+String name = sc.next();
+String sql = "SELECT id, name, sex, age FROM stu WHERE name='" + name + "'";
+```
+
+如果此时用户输入信息为： `枫阿雨' or 1='1`， 那么，上面的代码执行后 SQL语句变为：
+
+```sql
+SELECT id, name, sex, age FROM stu WHERE name='张华' or 1='1';
+```
+
+明显查询的结果发生了变化，这样的情况被称作为 `SQL注入`。为了防止 SQL注入，Java 提供了 `PreparedStatement`接口对 SQL进行预处理，该接口是 `Statement`接口的子接口，其常用方法如下：
+
+```java
+//执行查询，得到一个结果集
+ResultSet executeQuery() throws SQLException;
+//执行更新，得到受影响的行数
+int executeUpdate() throws SQLException;
+//使用给定的整数值设置给定位置的参数
+void setInt(int parameterIndex, int x) throws SQLException;
+//使用给定的长整数值设置给定位置的参数
+void setLong(int parameterIndex, long x) throws SQLException;
+//使用给定的双精度浮点数值设置给定位置的参数
+void setDouble(int parameterIndex, double x) throws SQLException; //使用给定的字符串值设置给定位置的参数
+void setString(int parameterIndex, String x) throws SQLException; //使用给定的对象设置给定位置的参数
+void setObject(int parameterIndex, Object x) throws SQLException; //获取结果集元数据
+ResultSetMetaData getMetaData() throws SQLException;
+```
+
+如何获取 `PreparedStatement`接口对象呢？
+
+```java
+PreparedStatement ps = connection.prepareStatement(sql);
+```
+
+`PreparedStatement`是如何进行预处理的？
+
+使用 `PreparedStatement`时， SQL语句中的参数一律使用 ?号来进行占位，然后通过调用`setXxx()`方法来对占位的 `?`号进行替换。从而将参数作为一个整体进行查询。
+
+上面的示例使用 `PreparedStatement`编写 SQL语句为：
+
+```java
+Scanner sc = new Scanner(System.in);
+System.out.println("请输入学生姓名：");
+String name = sc.next();
+String sql = "SELECT id, name, sex, age FROM stu WHERE name=?"; PreparedStatement ps = connection.prepareStatement(sql);
+ps.setString(1, name);
+ResultSet rs = ps.executeQuery();
+```
+
+**预处理`MySQL`内部实现原理：**
+
+1. 将未拼接参数的SQL语句作为SQL指令，先段递给数据库进行预编译。
+2. 再将参数传递给数据库，此时传递的参数不会再作为指令执行，会被当成文本处理。
+
+
+
+## 第二节 反射
+
+### 1. Class类
+
+我们编写的 Java 程序先经过编译器编译，生成`class`文件，而`class`文件的执行场所是在 `JVM` 中，那么` JVM` 如何存储我们编写的类的信息？
+
+首先我们回想一下，一个类有哪些组成部分
+
+![](./img/反射7-1.png)
+
+如果要定义一个类来描述所有类的共有特征，应该如何来设计？
+
+```java
+public class Class {
+
+private String name; //类名private Package pk; //包名
+    
+private Constructor[] constructors; //构造方法，因为可能存在多个，所以使用数组
+
+private Field[] fields; //字段，因为可能存在多个，所以使用数组
+    
+private Method[] methods; //方法，因为可能存在多个，所以使用数组
+
+private Class<?> interfaces; //实现的接口，因为可能存在多个，所以使用数组
+
+private Class<?> superClass; //继承的父类
+
+//省略getter/setter
+}
+
+```
+
+为什么要设计这样的类？因为我们编写的程序从本质上来说也是文件， `JVM`加载类的过程相当于对文件内容进行解析，解析内容就需要找到共有特征（ Class 类定义），然后再将这特征（使用 Class 对象）存储起来，在使用的时候再取出来。通过 Class 对象反向推到我们编写的类的内容，然后再进行操作，这个过程就称为反射。
+
+在 `JDK` 中已经提供了这样的类： `java.lang.Class`， 因此，我们不需要再来设计，只需要学习它即可。
+
+如何获取一个类对应的 Class 对象呢？
+
+```java
+Class<类名> clazz = 类名.class;
+Class<类名> clazz = 对象名.getClass();
+Class<类名> clazz = clazz.getSuperClass();
+Class clazz = Class.forName("类的全限定名");//类的全限定名=包名 + "." + 类名
+Class<类名> clazz = 包装类.TYPE;
+```
+
+Class类常用方法
+
+```java
+//获取类中使用public修饰的字段
+public Field[] getFields() throws SecurityException;
+//获取类中定义的所有字段
+public Field[] getDeclaredFields() throws SecurityException;
+//通过给定的字段名获取类中定义的字段
+public Field getField(String name) throws NoSuchFieldException, SecurityException;
+//获取类中使用public修饰的方法
+public Method[] getMethods() throws SecurityException;
+//获取类中定义的所有方法
+public Method[] getDeclaredMethods() throws SecurityException;
+//通过给定的方法名和参数列表类型获取类中定义的方法
+public Method getDeclaredMethod(String name, Class<?>... parameterTypes)
+       throws NoSuchMethodException, SecurityException;
+//获取类中使用public修饰的构造方法
+public Constructor<?>[] getConstructors() throws SecurityException;
+//通过给定的参数列表类型获取类中定义的构造方法
+public Constructor<T> getConstructor(Class<?>... parameterTypes)
+       throws NoSuchMethodException, SecurityException;
+//获取类的全限定名
+public String getName();
+//获取类所在的包
+public Package getPackage();
+//判断该类是否是基本数据类型
+public native boolean isPrimitive();
+//判断该类是否是接口
+public native boolean isInterface();
+//判断该类是否是数组
+public native boolean isArray();
+//通过类的无参构造创建一个实例
+public T newInstance() throws InstantiationException, IllegalAccessException;
+```
+
+`java.lang.reflect.AccessibleObject`
+
+```java
+//修改访问权限
+public void setAccessible(boolean flag) throws SecurityException；
+```
+
+<font color=blue>示例</font>：
+
+```java
+package com.kirov.jdbc.reflection;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+
+/**
+ * @author ：枫阿雨
+ * @description：TODO
+ * @date ：2022-01-24 16:30
+ */
+
+public class RelectionTest {
+    public static void main(String[] args) throws ClassNotFoundException, NoSuchMethodException, NoSuchFieldException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        //构造一个学生对象，并为每个字段赋值
+        Class<Student> clazz = Student.class;
+
+        Constructor<? extends Student> constructor = clazz.getDeclaredConstructor();
+        //Student类中的无参构造方法是私有的，因此需要先修改访问权限
+        constructor.setAccessible(true);
+        //创建Student类的实例(此处使用无参构造)
+        Student student = constructor.newInstance();
+        //获取名为"name"的成员变量本身
+        Field nameFiled = clazz.getDeclaredField("name");
+        //Student类中的name属性是私有的，因此需要先修改访问权限
+        nameFiled.setAccessible(true);
+        //给指定对象中的该字段赋值
+        nameFiled.set(student, "枫阿雨");
+        //age字段,过程与name相似
+        Field ageField = clazz.getDeclaredField("age");
+        ageField.setAccessible(true);
+        ageField.set(student, 19);
+
+        //调用getName和setName方法
+
+        //单独拿出简化运算
+        String filedName = nameFiled.getName();
+        //调用get方法(有参)
+        String methodName = "get" + filedName.substring(0, 1).toUpperCase() + filedName.substring(1);
+        //获取clazz[即Student]中的 getMethodName()[即setName()]方法
+        Method method = clazz.getDeclaredMethod(methodName);
+        //调用方法并将值存在String中
+        String name = (String) method.invoke(student);
+        //查看函数调用返回值结果
+        System.out.println(name);
+        System.out.println("===========================");
+        //调用set方法(有参数)
+        //找到setName()方法
+        String setMethodName = "set" + filedName.substring(0, 1).toUpperCase() + filedName.substring(1);
+        //获取clazz[即Student]中的 setMethodName(nameFiled.getType())[即setName(String)]方法
+        Method setMethod = clazz.getDeclaredMethod(setMethodName, nameFiled.getType());
+        //调用获取的setMethod方法并传入String参数
+        setMethod.invoke(student, "雨阿枫");
+        //打印对象查看是否更改成功
+        System.out.println(student);
+    }
+
+    private static void getMethod() throws NoSuchMethodException {
+        Class<Student> clazz = Student.class;
+
+        //获取给类的所有方法
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            System.out.print(method.getModifiers() + " ");
+            System.out.print(method.getName() + " (");
+            System.out.print(Arrays.toString(method.getParameterTypes()) + " ");
+            System.out.println(")");
+        }
+        System.out.println("====================");
+        //会获取所有公开的方法包括继承来的方法
+        methods = clazz.getMethods();
+        for (Method method : methods) {
+            System.out.print(method.getModifiers() + " ");
+            System.out.print(method.getName() + " (");
+            System.out.print(Arrays.toString(method.getParameterTypes()) + " ");
+            System.out.println(")");
+        }
+        System.out.println("====================");
+        //获取指定方法名和指定参数列表的方法对象
+        Method method = clazz.getDeclaredMethod("setName", String.class);
+        System.out.print(method.getModifiers() + " ");
+        System.out.print(method.getName() + " (");
+        System.out.print(Arrays.toString(method.getParameterTypes()) + " ");
+        System.out.println(")");
+    }
+
+    public static void getField() throws NoSuchFieldException {
+        Class<Student> clazz = Student.class;
+
+        //获得全部的字段
+        Field[] fields = clazz.getDeclaredFields();
+        for (Field field : fields) {
+            System.out.print(field.getModifiers() + " ");
+            System.out.print(field.getType().getName() + " ");
+            System.out.println(field.getName() + " ");
+        }
+        System.out.println("===========================");
+        //获取公开的字段
+        fields = clazz.getFields();
+        for (Field field : fields) {
+            System.out.print(field.getModifiers() + " ");
+            System.out.print(field.getType().getName() + " ");
+            System.out.println(field.getName() + " ");
+        }
+        System.out.println("===========================");
+        //获取指定字段名的字段
+        Field field = clazz.getDeclaredField("name");
+        System.out.print(field.getModifiers() + " ");
+        System.out.print(field.getType().getName() + " ");
+        System.out.println(field.getName() + " ");
+    }
+
+    private static void getConstructor() throws NoSuchMethodException {
+        Class<Student> clazz = Student.class;
+
+        //获取类中定义的构造方法
+        Constructor[] constructors = clazz.getDeclaredConstructors();
+        for (Constructor constructor : constructors) {
+            //打印修饰符 1是公开 2是私有 的
+            System.out.println(constructor.getModifiers());
+            String name = clazz.getName();//构造方法的名字
+            Class[] types = constructor.getParameterTypes();
+            System.out.print(name + " ");
+            System.out.println(Arrays.toString(types));
+        }
+
+        System.out.println("=================================");
+        //只能获取公开构造器数组
+        constructors = clazz.getConstructors();
+        for (Constructor constructor : constructors) {
+            //打印修饰符 1是公开 2是私有 的
+            System.out.println(constructor.getModifiers());
+            String name = clazz.getName();//构造方法的名字
+            Class[] types = constructor.getParameterTypes();
+            System.out.print(name + " ");
+            System.out.println(Arrays.toString(types));
+        }
+        System.out.println("=================================");
+        //只能获取特定参数列表的公开构造器
+        Constructor constructor = clazz.getConstructor(String.class, int.class);
+        System.out.println(constructor.getModifiers());
+        String name = clazz.getName();//构造方法的名字
+        Class[] types = constructor.getParameterTypes();
+        System.out.print(name + " ");
+        System.out.println(Arrays.toString(types));
+    }
+
+    public static void getClazz() throws ClassNotFoundException {
+        //获取类的Class对象
+        Class<Student> c1 = Student.class;
+        //获取类名
+        System.out.println(c1.getName());
+        Student stu = new Student("枫阿雨", 19);
+        //查看对象的类名
+        Class<? extends Student> c2 = stu.getClass();
+        //获取类的父类Class对象
+        Class<? super Student> c3 = c1.getSuperclass();
+        System.out.println(c3.getName());
+        //返回与具有给定字符串名称的类或接口关联的Class对象
+        Class c4 = Class.forName("com.kirov.jdbc.reflection.Student");
+        //获取包装类的Class对象
+        Class c5 = Integer.TYPE;
+        System.out.println(c5.getName());
+    }
+}
+```
+
+### 2. 反射与数据库
+
+数据库查询出的每一条数据基本上都会封装为一个对象，数据库中的每一个字段值都会存储在对象相应 的属性中。如果查询结果的每一个字段都与对象中的属性名保持一致，那么就可以使用反射来完成万能 查询。
+
+<font color=blue>`JdbcUtil`构建示例</font>：
+
+```java
+package com.kirov.jdbc.reflection;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author ：枫阿雨
+ * @description：TODO
+ * @date ：2022-01-24 19:32
+ */
+
+public class JdbcUtil {
+
+    private static final String url = "jdbc:mysql://localhost:3306/lesson?severTimezone=Asia/Shanghai";
+    private static final String username = "root";
+    private static final String password = "root";
+
+    //使用静态代码块，待类加载时执行驱动
+    static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            System.out.println("驱动程序未加载");
+        }
+    }
+
+    /**
+     * 万能更新
+     * @param sql
+     * @param params
+     * @return
+     */
+    public static int update(String sql, Object... params) {
+        int result = 0;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            connection = DriverManager.getConnection(url, username, password);
+            //
+            preparedStatement = createPreparedStatement(connection, sql, params);
+            result = preparedStatement.executeUpdate();
+            preparedStatement.close();
+            connection.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            close(preparedStatement, connection);
+        }
+        return result;
+    }
+
+    /**
+     * sql语句要和字段匹配
+     * 万能查询通过反射实现，必须保证类中定义字段名与查询结果展示的列名称保持一直
+     *
+     * @param sql
+     * @param clazz
+     * @param params
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> query(String sql, Class<T> clazz, Object... params) {
+
+        List<T> dataList = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = DriverManager.getConnection(url, username, password);
+            preparedStatement = createPreparedStatement(connection, sql, params);
+            resultSet = preparedStatement.executeQuery();
+            //结果集元数据
+            while (resultSet.next()) {
+                T t = createInstance(clazz, resultSet);
+                dataList.add(t);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            close(resultSet, preparedStatement, connection);
+        }
+        return dataList;
+    }
+    
+    /**
+     * 创建预编译处理器
+     * @param connection
+     * @param sql
+     * @param params
+     * @return
+     * @throws SQLException
+     */
+    private static PreparedStatement createPreparedStatement(Connection connection, String sql, Object... params) throws SQLException {
+        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+        //加入需要查询的值 params
+        if (params != null && params.length > 0) {
+            for (int i = 0; i < params.length; i++) {
+                preparedStatement.setObject(i + 1, params[i]);
+            }
+        }
+        return preparedStatement;
+    }
+
+    /**
+     * 关闭连接,执行器,结果集
+     *
+     * @param closeables
+     */
+    private static void close(AutoCloseable... closeables) {
+        if (closeables != null && closeables.length > 0) {
+            for (AutoCloseable closeable : closeables) {
+                if (closeable != null) {
+                    try {
+                        closeable.close();
+                    } catch (Exception e) {
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 反射创建对象
+     * @param clazz
+     * @param resultSet 查询结果集
+     * @param <T>
+     * @return
+     * @throws Exception
+     */
+    private static<T> T createInstance(Class<T> clazz, ResultSet resultSet) throws Exception {
+        Constructor<T> constructor = clazz.getConstructor();//获取无参构造
+        T t = constructor.newInstance();//创建对象
+        Field[] fields = clazz.getDeclaredFields();//获取类中定义的字段
+        for (Field field : fields) {
+            String fieldName = field.getName();
+            String methodNme = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+            Method method = clazz.getDeclaredMethod(methodNme, field.getType());
+            try {
+                Object value = resultSet.getObject(fieldName, field.getType());
+                method.invoke(t, value);
+            } catch (Exception e) {
+            }
+        }
+        return t;
+    }
+
+    
+    public static List<Goods> getgoods() {
+        String url = "jdbc:mysql://localhost:3306/lesson?severTimezone=Asia/Shanghai";
+        String username = "root";
+        String password = "root";
+        List<Goods> goodsList = new ArrayList<>();
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection connection = DriverManager.getConnection(url, username, password);
+            String sql = "SELECT id, name, number, price, agent_id FROM goods" +
+                    " WHERE name LIKE ? AND price > ?";
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, "%魅%");
+            preparedStatement.setDouble(2, 1000.00);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Goods goods = new Goods();
+                goods.setId(resultSet.getLong("id"));
+                goods.setName(resultSet.getString("name"));
+                goods.setNumber(resultSet.getInt("number"));
+                goods.setPrice(resultSet.getDouble("price"));
+                goods.setAgentId(resultSet.getInt("agent_id"));
+                goodsList.add(goods);
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        }
+        goodsList.forEach(System.out::println);
+        return goodsList;
+    }
+
+    public static List<Agent> getAgents() {
+        String url = "jdbc:mysql://localhost:3306/lesson?severTimezone=Asia/Shanghai";
+        String username = "root";
+        String password = "root";
+        List<Agent> agents = new ArrayList<>();
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection connection = DriverManager.getConnection(url, username, password);
+            String sql = "SELECT id, name, region_id FROM agent WHERE name LIKE ?";
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setString(1, "%魅%");
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                Agent agent = new Agent();
+                agent.setId(resultSet.getLong("id"));
+                agent.setName(resultSet.getString("name"));
+                agent.setRegionId(resultSet.getInt("region_id"));
+                agents.add(agent);
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            e.printStackTrace();
+        }
+        agents.forEach(System.out::println);
+        return agents;
+    }
+}
+
+```
+
+
+
+## 第三节 综合练习
+
+**1.` JDBC`操作步骤有哪些**
+
+```java
+//引入驱动包
+//加载驱动
+Class.forName("com.mysql.cj.jdbc.Driver");
+//获取连接: 从驱动管理器中获取连接
+Connection conn = DriverManager.getConnection(url, username, password);
+//创建SQL语句执行器
+PreparedStatement ps = conn.prepareStatement(sql);
+//设置参数
+ps.setString(1, "");
+//执行查询或者更新
+//查询:
+ResultSet rs = ps.executeQuery();
+//遍历结果集
+While(rs.next()){
+    rs.getString("name");
+    rs.getInt(2);
+}
+//更新:
+int affecteRows = ps.executeUpdate();
+//关闭资源
+rs.close();
+ps.close();
+conn.close();
+```
+
+**2. Class类的常用方法有哪些**
+
+```java
+Constructor c = clazz.getDeclaredConstructor();//获取类中定义的无参构造对象
+c.setAccessible(true);//设置访问权限
+Object o = c.newInstance();//通过无参构造创建类的实例对象
+Filed[] fileds = clazz.getDeclaredFileds();//获取类的属性字段列表
+Method m = clazz.getDeclaredMethod("方法名",参数类型列表);//获取指定方法名和参数列表的方法对象
+m.invoke(o, 值);//执行方法
+```
+
+---
+
+
+
+
+
+# 第八章 分层开发
+
+## 第一节 生活中的分层
+
+![](./img/分层开发8-1.png)
+
+由上图可以看出，公司和学校对职工都进行了分层，为什么要进行这样的分层呢?
+
+- 分层后每一层只专注于自己所做的事情，能够提高作业
+- 质量便于分工协作，提高作业效率
+- 便于业务拓展
+- 方便问题排查
+
+这样的分层有什么特点呢？
+
+- 上层制定任务，下层接受任务，上层安排下层做事，但下层不能安排上层做事
+
+- 下层只需要汇报做事的结果，不需要汇报做事的过程
+
+
+
+## 第二节 分层开发
+
+### 1. 三层结构
+
+生活中的分层也可以应用于软件开发中，软件开发分层主要分为三层：
+
+- **界面层，又称控制层（controller）**
+
+  与用户进行交互，主要负责数据采集和展示
+
+- **业务逻辑层（service）**
+
+  负责处理功能模块的业务逻辑，以及界面层和数据访问层的数据流转
+
+- **数据访问层（data access object => `dao`）**
+
+  只负责与数据库进行交互
+
+### 2. 分层原则
+
+软件分层开发也具有生活中分层的特点，这些特点被称之为分层原则：
+
+- **封装性原则**
+  每层只向外公开接口，但隐藏了内部实现细节
+- 顺序访问原则
+  下层为上层服务，但下层不能使用上层服务
+- **开闭原则**
+  对扩展开放，对修改关闭
+
+### 3. 分层的优点
+
+- **各层专注于自己所做的事情，便于提高开发质量**
+- **便于分工协作，提高开发效率**
+- **便于程序扩展**
+- **便于代码复用**
+- **易于维护**
+
+### 4. 分层开发案例
+
+<font color=blue>实例</font>：使用分层开发完成用户注册与登录功能
+
+> 注：此示例文件结构较为复杂，不便于在此文件中展示。[源码可以去我的`GitHub`仓库中查看]((https://github.com/Kirov7/Three-tier-architecture-demo))
 
