@@ -4,3 +4,5 @@ Notes taken during individual study sessions, Unscheduled update<br>
 
 ## 目前已有内容：
 - JavaSE XML部分
+- DataBase MySQL基础部分
+- JavaScrip BOM DOM 基础
