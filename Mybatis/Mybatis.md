@@ -459,19 +459,656 @@ public class Teacher {
 
 通过使用`association`进行关联，形成多对一的关系，实际上和一对多是同理的，都是对查询结果的一种处理方式罢了。
 
-## 第五节 动态 SQL
+## 第五节 事务操作
+
+我们可以在获取`SqlSession`关闭自动提交来开启事务模式，和JDBC其实都差不多：
+
+```java
+public static void main(String[] args) {
+    try (SqlSession sqlSession = MybatisUtil.getSession(false)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+
+        testMapper.addStudent(new Student().setSex("男").setName("小王"));
+
+        testMapper.selectStudent().forEach(System.out::println);
+    }
+}
+```
+
+我们发现，在关闭自动提交后，我们的内容是没有进入到数据库的，现在我们来试一下在最后提交事务：
+
+```java
+sqlSession.commit();
+```
+
+在事务提交后，我们的内容才会被写入到数据库中。现在我们来试试看回滚操作：
+
+```java
+try (SqlSession sqlSession = MybatisUtil.getSession(false)){
+    TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+
+    testMapper.addStudent(new Student().setSex("男").setName("小王"));
+
+    testMapper.selectStudent().forEach(System.out::println);
+    sqlSession.rollback();
+    sqlSession.commit();
+}
+```
+
+回滚操作也印证成功。
+
+## 第六节 动态 SQL
+
+动态 SQL 是 MyBatis 的强大特性之一。如果你使用过 JDBC 或其它类似的框架，你应该能理解根据不同条件拼接 SQL 语句有多痛苦，例如拼接时要确保不能忘记添加必要的空格，还要注意去掉列表最后一个列名的逗号。利用动态 SQL，可以彻底摆脱这种痛苦。
+
+### 1. if
+
+使用动态 SQL 最常见情景是根据条件包含 where 子句的一部分。比如：
+
+```xml
+<select id="findActiveBlogWithTitleLike"
+     resultType="Blog">
+  SELECT * FROM BLOG
+  WHERE state = ‘ACTIVE’
+  <if test="title != null">
+    AND title like #{title}
+  </if>
+</select>
+```
+
+这条语句提供了可选的查找文本功能。如果不传入 “title”，那么所有处于 “ACTIVE” 状态的 BLOG 都会返回；如果传入了 “title” 参数，那么就会对 “title” 一列进行模糊查找并返回对应的 BLOG 结果（细心的读者可能会发现，“title” 的参数值需要包含查找掩码或通配符字符）。
+
+如果希望通过 “title” 和 “author” 两个参数进行可选搜索该怎么办呢？首先，我想先将语句名称修改成更名副其实的名称；接下来，只需要加入另一个条件即可。
+
+```xml
+<select id="findActiveBlogLike"
+     resultType="Blog">
+  SELECT * FROM BLOG WHERE state = ‘ACTIVE’
+  <if test="title != null">
+    AND title like #{title}
+  </if>
+  <if test="author != null and author.name != null">
+    AND author_name like #{author.name}
+  </if>
+</select>
+```
+
+### 2. **choose、when、otherwise**
+
+有时候，我们不想使用所有的条件，而只是想从多个条件中选择一个使用。针对这种情况，MyBatis 提供了 choose 元素，它有点像 Java 中的 switch 语句。
+
+还是上面的例子，但是策略变为：传入了 “title” 就按 “title” 查找，传入了 “author” 就按 “author” 查找的情形。若两者都没有传入，就返回标记为 featured 的 BLOG（这可能是管理员认为，与其返回大量的无意义随机 Blog，还不如返回一些由管理员精选的 Blog）。
+
+```xml
+<select id="findActiveBlogLike"
+     resultType="Blog">
+  SELECT * FROM BLOG WHERE state = ‘ACTIVE’
+  <choose>
+    <when test="title != null">
+      AND title like #{title}
+    </when>
+    <when test="author != null and author.name != null">
+      AND author_name like #{author.name}
+    </when>
+    <otherwise>
+      AND featured = 1
+    </otherwise>
+  </choose>
+</select>
+```
+
+### 3. trim、where、set
+
+前面几个例子已经方便地解决了一个臭名昭著的动态 SQL 问题。现在回到之前的 “if” 示例，这次我们将 “state = ‘ACTIVE’” 设置成动态条件，看看会发生什么。
+
+```
+<select id="findActiveBlogLike"
+     resultType="Blog">
+  SELECT * FROM BLOG
+  WHERE
+  <if test="state != null">
+    state = #{state}
+  </if>
+  <if test="title != null">
+    AND title like #{title}
+  </if>
+  <if test="author != null and author.name != null">
+    AND author_name like #{author.name}
+  </if>
+</select>
+```
+
+如果没有匹配的条件会怎么样？最终这条 SQL 会变成这样：
+
+```
+SELECT * FROM BLOG
+WHERE
+```
+
+这会导致查询失败。如果匹配的只是第二个条件又会怎样？这条 SQL 会是这样:
+
+```
+SELECT * FROM BLOG
+WHERE
+AND title like ‘someTitle’
+```
+
+这个查询也会失败。这个问题不能简单地用条件元素来解决。这个问题是如此的难以解决，以至于解决过的人不会再想碰到这种问题。
+
+MyBatis 有一个简单且适合大多数场景的解决办法。而在其他场景中，可以对其进行自定义以符合需求。而这，只需要一处简单的改动：
+
+```
+<select id="findActiveBlogLike"
+     resultType="Blog">
+  SELECT * FROM BLOG
+  <where>
+    <if test="state != null">
+         state = #{state}
+    </if>
+    <if test="title != null">
+        AND title like #{title}
+    </if>
+    <if test="author != null and author.name != null">
+        AND author_name like #{author.name}
+    </if>
+  </where>
+</select>
+```
+
+*where* 元素只会在子元素返回任何内容的情况下才插入 “WHERE” 子句。而且，若子句的开头为 “AND” 或 “OR”，*where* 元素也会将它们去除。
+
+如果 *where* 元素与你期望的不太一样，你也可以通过自定义 trim 元素来定制 *where* 元素的功能。比如，和 *where* 元素等价的自定义 trim 元素为：
+
+```
+<trim prefix="WHERE" prefixOverrides="AND |OR ">
+  ...
+</trim>
+```
+
+*prefixOverrides* 属性会忽略通过管道符分隔的文本序列（注意此例中的空格是必要的）。上述例子会移除所有 *prefixOverrides* 属性中指定的内容，并且插入 *prefix* 属性中指定的内容。
+
+用于动态更新语句的类似解决方案叫做 *set*。*set* 元素可以用于动态包含需要更新的列，忽略其它不更新的列。比如：
+
+```
+<update id="updateAuthorIfNecessary">
+  update Author
+    <set>
+      <if test="username != null">username=#{username},</if>
+      <if test="password != null">password=#{password},</if>
+      <if test="email != null">email=#{email},</if>
+      <if test="bio != null">bio=#{bio}</if>
+    </set>
+  where id=#{id}
+</update>
+```
+
+这个例子中，*set* 元素会动态地在行首插入 SET 关键字，并会删掉额外的逗号（这些逗号是在使用条件语句给列赋值时引入的）。
+
+来看看与 *set* 元素等价的自定义 *trim* 元素吧：
+
+```
+<trim prefix="SET" suffixOverrides=",">
+  ...
+</trim>
+```
+
+注意，我们覆盖了后缀值设置，并且自定义了前缀值。
+
+### 4. foreach
+
+动态 SQL 的另一个常见使用场景是对集合进行遍历（尤其是在构建 IN 条件语句的时候）。比如：
+
+```
+<select id="selectPostIn" resultType="domain.blog.Post">
+  SELECT *
+  FROM POST P
+  <where>
+    <foreach item="item" index="index" collection="list"
+        open="ID in (" separator="," close=")" nullable="true">
+          #{item}
+    </foreach>
+  </where>
+</select>
+```
+
+*foreach* 元素的功能非常强大，它允许你指定一个集合，声明可以在元素体内使用的集合项（item）和索引（index）变量。它也允许你指定开头与结尾的字符串以及集合项迭代之间的分隔符。这个元素也不会错误地添加多余的分隔符，看它多智能！
+
+<font color=blue>**提示：**</font>你可以将任何可迭代对象（如 List、Set 等）、Map 对象或者数组对象作为集合参数传递给 *foreach*。当使用可迭代对象或者数组时，index 是当前迭代的序号，item 的值是本次迭代获取到的元素。当使用 Map 对象（或者 Map.Entry 对象的集合）时，index 是键，item 是值。
 
 
 
-## 第六节 缓存机制
+## 第七节 缓存机制
 
+MyBatis 内置了一个强大的事务性查询缓存机制，它可以非常方便地配置和定制。 
 
+其实缓存机制我们在之前学习IO流的时候已经提及过了，我们可以提前将一部分内容放入缓存，下次需要获取数据时，我们就可以直接从缓存中读取，这样的话相当于直接从内存中获取而不是再去向数据库索要数据，效率会更高。
 
-## 第七节 使用注解开发
+因此Mybatis内置了一个缓存机制，我们查询时，如果缓存中存在数据，那么我们就可以直接从缓存中获取，而不是再去向数据库进行请求。
 
+![img](./img/缓存机制1-3.png)
 
+Mybatis存在一级缓存和二级缓存，我们首先来看一下一级缓存，默认情况下，只启用了本地的会话缓存，它仅仅对一个会话中的数据进行缓存（一级缓存无法关闭，只能调整），我们来看看下面这段代码：
 
-## 第八节 探究 MyBatis 的动态代理机制
+```java
+public static void main(String[] args) throws InterruptedException {
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+        Student student1 = testMapper.getStudentBySid(1);
+        Student student2 = testMapper.getStudentBySid(1);
+        System.out.println(student1 == student2);//true
+    }
+}
+```
+
+我们发现，两次得到的是同一个Student对象，也就是说我们第二次查询并没有重新去构造对象，而是直接得到之前创建好的对象。如果还不是很明显，我们可以修改一下实体类：
+
+```java
+@Data
+@Accessors(chain = true)
+public class Student {
+
+    public Student(){
+        System.out.println("我被构造了");
+    }
+
+    private int sid;
+    private String name;
+    private String sex;
+}
+```
+
+我们通过前面的学习得知 Mybatis 在映射为对象时，在只有一个构造方法的情况下，无论你构造方法写成什么样子，都会去调用一次构造方法，如果存在多个构造方法，那么就会去找匹配的构造方法。我们可以通过查看构造方法来验证对象被创建了几次。
+
+结果显而易见，只创建了一次，也就是说当第二次进行同样的查询时，会直接使用第一次的结果，因为第一次的结果已经被缓存了。
+
+那么如果我修改了数据库中的内容，缓存还会生效吗：
+
+```java
+public static void main(String[] args) throws InterruptedException {
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+        Student student1 = testMapper.getStudentBySid(1);
+        testMapper.addStudent(new Student().setName("小李").setSex("男"));
+        Student student2 = testMapper.getStudentBySid(1);
+        System.out.println(student1 == student2);//false
+    }
+}
+```
+
+我们发现，当我们进行了插入操作后，缓存就没有生效了，我们再次进行查询得到的是一个新创建的对象。
+
+也就是说，一级缓存，在进行 DML 操作后，会使得缓存失效，也就是说Mybatis知道我们对数据库里面的数据进行了修改，所以之前缓存的内容可能就不是当前数据库里面最新的内容了。还有一种情况就是，当前会话结束后，也会清理全部的缓存，因为已经不会再用到了。但是一定注意，一级缓存只针对于单个会话，多个会话之间不相通。
+
+```java
+public static void main(String[] args) {
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+
+        Student student2;
+        try(SqlSession sqlSession2 = MybatisUtil.getSession(true)){
+            TestMapper testMapper2 = sqlSession2.getMapper(TestMapper.class);
+            student2 = testMapper2.getStudentBySid(1);
+        }
+
+        Student student1 = testMapper.getStudentBySid(1);
+        System.out.println(student1 == student2);
+    }
+}
+```
+
+**注意：**一个会话DML操作只会重置当前会话的缓存，不会重置其他会话的缓存，也就是说，其他会话缓存是不会更新的！
+
+一级缓存给我们提供了很高速的访问效率，但是它的作用范围实在是有限，如果一个会话结束，那么之前的缓存就全部失效了，但是我们希望缓存能够扩展到所有会话都能使用，因此我们可以通过二级缓存来实现，二级缓存默认是关闭状态，要开启二级缓存，我们需要在映射器XML文件中添加：
+
+```xml
+<cache
+       />
+```
+
+可见二级缓存是Mapper级别的，也就是说，当一个会话失效时，它的缓存依然会存在于二级缓存中，因此如果我们再次创建一个新的会话会直接使用之前的缓存，我们首先根据官方文档进行一些配置：
+
+```xml
+<cache
+  eviction="FIFO"
+  flushInterval="60000"
+  size="512"
+  readOnly="true"/>
+```
+
+我们来编写一个代码：
+
+```java
+public static void main(String[] args) {
+    Student student;
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+        student = testMapper.getStudentBySid(1);
+    }
+
+    try (SqlSession sqlSession2 = MybatisUtil.getSession(true)){
+        TestMapper testMapper2 = sqlSession2.getMapper(TestMapper.class);
+        Student student2 = testMapper2.getStudentBySid(1);
+        System.out.println(student2 == student);
+    }
+}
+```
+
+我们可以看到，上面的代码中首先是第一个会话在进行读操作，完成后会结束会话，而第二个操作重新创建了一个新的会话，再次执行了同样的查询，我们发现得到的依然是缓存的结果。
+
+那么如果我不希望某个方法开启缓存呢？我们可以添加useCache属性来关闭缓存：
+
+```xml
+<select id="getStudentBySid" resultType="Student" useCache="false">
+    select * from student where sid = #{sid}
+</select>
+```
+
+我们也可以使用flushCache="false"在每次执行后都清空缓存，通过这这个我们还可以控制DML操作完成之后不清空缓存。
+
+```xml
+<select id="getStudentBySid" resultType="Student" flushCache="true">
+    select * from student where sid = #{sid}
+</select>
+```
+
+添加了二级缓存之后，会先从二级缓存中查找数据，当二级缓存中没有时，才会从一级缓存中获取，当一级缓存中都还没有数据时，才会请求数据库，因此我们再来执行上面的代码：
+
+```java
+public static void main(String[] args) {
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+
+        Student student2;
+        try(SqlSession sqlSession2 = MybatisUtil.getSession(true)){
+            TestMapper testMapper2 = sqlSession2.getMapper(TestMapper.class);
+            student2 = testMapper2.getStudentBySid(1);
+        }
+
+        Student student1 = testMapper.getStudentBySid(1);
+        System.out.println(student1 == student2);
+    }
+}
+```
+
+得到的结果就会是同一个对象了，因为现在是优先从二级缓存中获取。
+
+读取顺序：二级缓存 => 一级缓存 => 数据库
+
+![img](./img/读取顺序1-4.png)
+
+那么二级缓存是在什么是更新的呢？
+
+```java
+public static void main(String[] args) {
+    try (SqlSession sqlSession = MybatisUtil.getSession(true);
+        SqlSession sqlSession2 = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+
+		Student student2 = testMapper2.getStudentBySid(1);
+        Student student1 = testMapper.getStudentBySid(1);
+        
+        System.out.println(student1 == student2);//false
+    }
+}
+```
+
+可以看到构造了两次。所以虽然它们两个共用的是同一个二级缓存，但是两个对话还没有结束，此时进行查询只会更新一级缓存，**只有对话结束的时候才会把一级缓存写道二级缓存中**。
+
+虽然缓存机制给我们提供了很大的性能提升，但是缓存存在一个问题，我们之前在 `计算机组成原理` 中可能学习过缓存一致性问题，也就是说当多个CPU在操作自己的缓存时，可能会出现各自的缓存内容不同步的问题，而Mybatis也会这样，我们来看看这个例子：
+
+```java
+public static void main(String[] args) throws InterruptedException {
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+        while (true){
+            Thread.sleep(3000);
+            System.out.println(testMapper.getStudentBySid(1));
+        }
+    }
+}
+```
+
+我们现在循环地每三秒读取一次，而在这个过程中，我们使用IDEA手动修改数据库中的数据，将1号同学的学号改成100，那么理想情况下，下一次读取将无法获取到小明，因为小明的学号已经发生变化了。
+
+但是结果却是依然能够读取，并且 `sid` 并没有发生改变，这也证明了Mybatis的缓存在生效，因为我们是从外部进行修改，Mybatis不知道我们修改了数据，所以依然在使用缓存中的数据，但是这样很明显是不正确的，因此，如果存在多台服务器或者是多个程序都在使用Mybatis操作同一个数据库，并且都开启了缓存，需要解决这个问题，要么就得关闭Mybatis的缓存来保证一致性：
+
+```xml
+<settings>
+    <setting name="cacheEnabled" value="false"/>
+</settings>
+```
+
+```xml
+<select id="getStudentBySid" resultType="Student" useCache="false" flushCache="true">
+    select * from student where sid = #{sid}
+</select>
+```
+
+要么就需要实现缓存共用，也就是让所有的Mybatis都使用同一个缓存进行数据存取，在后面，我们会继续学习Redis、Ehcache、Memcache等缓存框架，通过使用这些工具，就能够很好地解决缓存一致性问题。
+
+## 第八节 使用注解开发
+
+在之前的开发中，我们已经体验到Mybatis为我们带来的便捷了，我们只需要编写对应的映射器，并将其绑定到一个接口上，即可直接通过该接口执行我们的SQL语句，极大的简化了我们之前JDBC那样的代码编写模式。那么，能否实现无需xml映射器配置，而是直接使用注解在接口上进行配置呢？答案是可以的，也是现在推荐的一种方式（也不是说XML就不要去用了，由于Java 注解的表达能力和灵活性十分有限，可能相对于XML配置某些功能实现起来会不太好办，但是在大部分场景下，直接使用注解开发已经绰绰有余了）
+
+首先我们来看一下，使用XML进行映射器编写时，我们需要现在XML中定义映射规则和SQL语句，然后再将其绑定到一个接口的方法定义上，然后再使用接口来执行：
+
+```xml
+<insert id="addStudent">
+    insert into student(name, sex) values(#{name}, #{sex})
+</insert>
+```
+
+```java
+int addStudent(Student student);
+```
+
+而现在，我们可以直接使用注解来实现，每个操作都有一个对应的注解：
+
+```java
+@Insert("insert into student(name, sex) values(#{name}, #{sex})")
+int addStudent(Student student);
+```
+
+当然，我们还需要修改一下配置文件中的映射器注册：
+
+```java
+<mappers>
+    <mapper class="com.test.mapper.MyMapper"/>
+    <!--  也可以直接注册整个包下的 <package name="com.test.mapper"/>  -->
+</mappers>
+```
+
+通过直接指定Class，来让Mybatis知道我们这里有一个通过注解实现的映射器。
+
+我们接着来看一下，如何使用注解进行自定义映射规则：
+
+```java
+@Results({
+        @Result(id = true, column = "sid", property = "sid"),
+        @Result(column = "sex", property = "name"),
+        @Result(column = "name", property = "sex")
+})
+@Select("select * from student")
+List<Student> getAllStudent();
+```
+
+直接通过`@Results`注解，就可以直接进行配置了，此注解的value是一个`@Result`注解数组，每个`@Result`注解都都一个单独的字段配置，其实就是我们之前在XML映射器中写的：
+
+```xml
+<resultMap id="test" type="Student">
+    <id property="sid" column="sid"/>
+    <result column="name" property="sex"/>    
+  	<result column="sex" property="name"/>
+</resultMap>
+```
+
+现在我们就可以通过注解来自定义映射规则了。那么如何使用注解来完成复杂查询呢？我们还是使用一个老师多个学生的例子：
+
+```java
+@Results({
+        @Result(id = true, column = "tid", property = "tid"),
+        @Result(column = "name", property = "name"),
+        @Result(column = "tid", property = "studentList", many =
+            @Many(select = "getStudentByTid")
+        )
+})
+@Select("select * from teacher where tid = #{tid}")
+Teacher getTeacherBySid(int tid);
+
+@Select("select * from student inner join teach on student.sid = teach.sid where tid = #{tid}")
+List<Student> getStudentByTid(int tid);
+```
+
+我们发现，多出了一个子查询，而这个子查询是单独查询该老师所属学生的信息，而子查询结果作为`@Result`注解的一个many结果，代表子查询的所有结果都归入此集合中（也就是之前的collection标签）
+
+```xml
+<resultMap id="asTeacher" type="Teacher">
+    <id column="tid" property="tid"/>
+    <result column="tname" property="name"/>
+    <collection property="studentList" ofType="Student">
+        <id property="sid" column="sid"/>
+        <result column="name" property="name"/>
+        <result column="sex" property="sex"/>
+    </collection>
+</resultMap>
+```
+
+同理，`@Result`也提供了`@One`子注解来实现一对一的关系表示，类似于之前的`assocation`标签：
+
+```java
+@Results({
+        @Result(id = true, column = "sid", property = "sid"),
+        @Result(column = "sex", property = "name"),
+        @Result(column = "name", property = "sex"),
+        @Result(column = "sid", property = "teacher", one =
+            @One(select = "getTeacherBySid")
+        )
+})
+@Select("select * from student")
+List<Student> getAllStudent();
+```
+
+如果现在我希望直接使用注解编写SQL语句但是我希望映射规则依然使用XML来实现，这时该怎么办呢？
+
+```java
+@ResultMap("test")
+@Select("select * from student")
+List<Student> getAllStudent();
+```
+
+提供了`@ResultMap`注解，直接指定ID即可，这样我们就可以使用XML中编写的映射规则了，这里就不再演示了。
+
+那么如果出现之前的两个构造方法的情况，且没有任何一个构造方法匹配的话，该怎么处理呢？
+
+```java
+@Data
+@Accessors(chain = true)
+public class Student {
+
+    public Student(int sid){
+        System.out.println("我是一号构造方法"+sid);
+    }
+
+    public Student(int sid, String name){
+        System.out.println("我是二号构造方法"+sid+name);
+    }
+
+    private int sid;
+    private String name;
+    private String sex;
+}
+```
+
+我们可以通过`@ConstructorArgs`注解来指定构造方法：
+
+```java
+@ConstructorArgs({
+        @Arg(column = "sid", javaType = int.class),
+        @Arg(column = "name", javaType = String.class)
+})
+@Select("select * from student where sid = #{sid} and sex = #{sex}")
+Student getStudentBySidAndSex(@Param("sid") int sid, @Param("sex") String sex);
+```
+
+得到的结果和使用`constructor`标签效果一致，这里就不多做讲解了。
+
+我们发现，当参数列表中出现两个以上的参数时，会出现错误：
+
+```java
+@Select("select * from student where sid = #{sid} and sex = #{sex}")
+Student getStudentBySidAndSex(int sid, String sex);
+```
+
+```java
+Exception in thread "main" org.apache.ibatis.exceptions.PersistenceException: 
+### Error querying database.  Cause: org.apache.ibatis.binding.BindingException: Parameter 'sid' not found. Available parameters are [arg1, arg0, param1, param2]
+### Cause: org.apache.ibatis.binding.BindingException: Parameter 'sid' not found. Available parameters are [arg1, arg0, param1, param2]
+	at org.apache.ibatis.exceptions.ExceptionFactory.wrapException(ExceptionFactory.java:30)
+	at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:153)
+	at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:145)
+	at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:140)
+	at org.apache.ibatis.session.defaults.DefaultSqlSession.selectOne(DefaultSqlSession.java:76)
+	at org.apache.ibatis.binding.MapperMethod.execute(MapperMethod.java:87)
+	at org.apache.ibatis.binding.MapperProxy$PlainMethodInvoker.invoke(MapperProxy.java:145)
+	at org.apache.ibatis.binding.MapperProxy.invoke(MapperProxy.java:86)
+	at com.sun.proxy.$Proxy6.getStudentBySidAndSex(Unknown Source)
+	at com.test.Main.main(Main.java:16)
+```
+
+原因是Mybatis不明确到底哪个参数是什么，因此我们可以添加`@Param`来指定参数名称：
+
+```java
+@Select("select * from student where sid = #{sid} and sex = #{sex}")
+Student getStudentBySidAndSex(@Param("sid") int sid, @Param("sex") String sex);
+```
+
+**探究：**要是我两个参数一个是基本类型一个是对象类型呢？
+
+```java
+System.out.println(testMapper.addStudent(100, new Student().setName("小陆").setSex("男")));
+```
+
+```java
+@Insert("insert into student(sid, name, sex) values(#{sid}, #{name}, #{sex})")
+int addStudent(@Param("sid") int sid, @Param("student")  Student student);
+```
+
+那么这个时候，就出现问题了，Mybatis就不能明确这些属性是从哪里来的：
+
+```java
+### SQL: insert into student(sid, name, sex) values(?, ?, ?)
+### Cause: org.apache.ibatis.binding.BindingException: Parameter 'name' not found. Available parameters are [student, param1, sid, param2]
+	at org.apache.ibatis.exceptions.ExceptionFactory.wrapException(ExceptionFactory.java:30)
+	at org.apache.ibatis.session.defaults.DefaultSqlSession.update(DefaultSqlSession.java:196)
+	at org.apache.ibatis.session.defaults.DefaultSqlSession.insert(DefaultSqlSession.java:181)
+	at org.apache.ibatis.binding.MapperMethod.execute(MapperMethod.java:62)
+	at org.apache.ibatis.binding.MapperProxy$PlainMethodInvoker.invoke(MapperProxy.java:145)
+	at org.apache.ibatis.binding.MapperProxy.invoke(MapperProxy.java:86)
+	at com.sun.proxy.$Proxy6.addStudent(Unknown Source)
+	at com.test.Main.main(Main.java:16)
+```
+
+那么我们就通过参数名称.属性的方式去让Mybatis知道我们要用的是哪个属性：
+
+```java
+@Insert("insert into student(sid, name, sex) values(#{sid}, #{student.name}, #{student.sex})")
+int addStudent(@Param("sid") int sid, @Param("student")  Student student);
+```
+
+那么如何通过注解控制缓存机制呢？
+
+```java
+@CacheNamespace(readWrite = false)
+public interface MyMapper {
+
+    @Select("select * from student")
+    @Options(useCache = false)
+    List<Student> getAllStudent();
+```
+
+使用`@CacheNamespace`注解直接定义在接口上即可，然后我们可以通过使用`@Options`来控制单个操作的缓存启用。
+
+## 第九节 探究 MyBatis 的动态代理机制
 
 
 
@@ -580,7 +1217,7 @@ public class Student {
 
 ### 1. 配置 Lombok
 
-* 首先我们需要导入Lombok的jar依赖，和jdbc依赖是一样的，放在项目目录下直接导入就行了。可以在这里进行下载：https://projectlombok.org/download
+* 首先我们需要导入Lombok的jar依赖，和 JDBC 依赖是一样的，放在项目目录下直接导入就行了。可以在这里进行下载：https://projectlombok.org/download
 * 然后我们要安装一下 Lombok 插件，由于IDEA默认都安装了 Lombok 的插件，因此直接导入依赖后就可以使用了。
 * 重启 IDEA
 
@@ -614,6 +1251,8 @@ Java 的编译过程可以分成三个阶段：
 * 使用`@Builder`来快速生成建造者模式。
   * 通过使用`@Builder.Default`来指定默认值。
   * 通过使用`@Builder.ObtainVia`来指定默认值的获取方式。
+
+
 
 ## 第二节 JUnit
 

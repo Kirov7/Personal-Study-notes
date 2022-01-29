@@ -1197,7 +1197,7 @@ SELECT COUNT(*) FROM stu INNER JOIN score ON stu.id=score.stu_id;
 SELECT COUNT(*) FROM stu, score WHERE stu.id=score.stu.id;
 ```
 
-> 注：下方写法效率更高，下方写法为`ORACLE`的写法，`MySQL`仍支持
+> 注：上方写法效率更高，下方写法为`ORACLE`的写法，`MySQL`仍支持
 
 ### 3. 外连接
 
