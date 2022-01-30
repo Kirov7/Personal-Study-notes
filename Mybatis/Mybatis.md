@@ -1110,25 +1110,429 @@ public interface MyMapper {
 
 ## 第九节 探究 MyBatis 的动态代理机制
 
+在探究动态代理机制之前，我们要先聊聊什么是代理：其实顾名思义，就好比我开了个大棚，里面栽种的西瓜，那么西瓜成熟了是不是得去卖掉赚钱，而我们的西瓜非常多，一个人肯定卖不过来，肯定就要去多找几个开水果摊的帮我们卖，这就是一种代理。实际上是由水果摊老板在帮我们卖瓜，我们只告诉老板卖多少钱，而至于怎么卖的是由水果摊老板决定的。
 
+![img](./img/动态代理1-6.png)
+
+那么现在我们来尝试实现一下这样的类结构，首先定义一个接口用于规范行为：
+
+```java
+public interface Shopper {
+
+    //卖瓜行为
+    void saleWatermelon(String customer);
+}
+```
+
+然后需要实现一下卖瓜行为，也就是我们要告诉老板卖多少钱，这里就直接写成成功出售：
+
+```java
+public class ShopperImpl implements Shopper{
+
+    //卖瓜行为的实现
+    @Override
+    public void saleWatermelon(String customer) {
+        System.out.println("成功出售西瓜给 ===> "+customer);
+    }
+}
+```
+
+最后老板代理后肯定要用自己的方式去出售这些西瓜，成交之后再按照我们告诉老板的价格进行出售：
+
+```java
+public class ShopperProxy implements Shopper{
+
+    private final Shopper impl;
+
+    public ShopperProxy(Shopper impl){
+        this.impl = impl;
+    }
+
+    //代理卖瓜行为
+    @Override
+    public void saleWatermelon(String customer) {
+        //首先进行 代理商讨价还价行为
+        System.out.println(customer + "：哥们，这瓜多少钱一斤啊？");
+        System.out.println("老板：两块钱一斤。");
+        System.out.println(customer + "：你这瓜皮子是金子做的，还是瓜粒子是金子做的？");
+        System.out.println("老板：你瞅瞅现在哪有瓜啊，这都是大棚的瓜，你嫌贵我还嫌贵呢。");
+        System.out.println(customer + "：给我挑一个。");
+
+        impl.saleWatermelon(customer);   //讨价还价成功，进行我们告诉代理商的卖瓜行为
+    }
+}
+```
+
+现在我们来试试看：
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Shopper shopper = new ShopperProxy(new ShopperImpl());
+        shopper.saleWatermelon("小强");
+    }
+}
+```
+
+这样的操作称为静态代理，也就是说我们需要提前知道接口的定义并进行实现才可以完成代理，而Mybatis这样的是无法预知代理接口的，我们就需要用到动态代理。
+
+JDK提供的反射框架就为我们很好地解决了动态代理的问题，在这里相当于对JavaSE阶段反射的内容进行一个补充。
+
+```java
+public class ShopperProxy implements InvocationHandler {
+
+    Object target;
+    public ShopperProxy(Object target){
+        this.target = target;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        String customer = (String) args[0];
+        System.out.println(customer + "：哥们，这瓜多少钱一斤啊？");
+        System.out.println("老板：两块钱一斤。");
+        System.out.println(customer + "：你这瓜皮子是金子做的，还是瓜粒子是金子做的？");
+        System.out.println("老板：你瞅瞅现在哪有瓜啊，这都是大棚的瓜，你嫌贵我还嫌贵呢。");
+        System.out.println(customer + "：行，给我挑一个。");
+        return method.invoke(target, args);
+    }
+}
+```
+
+通过实现InvocationHandler来成为一个动态代理，我们发现它提供了一个invoke方法，用于调用被代理对象的方法并完成我们的代理工作。现在就可以通过` Proxy.newProxyInstance`来生成一个动态代理类：
+
+```java
+public static void main(String[] args) {
+    Shopper impl = new ShopperImpl();
+    Shopper shopper = (Shopper) Proxy.newProxyInstance(impl.getClass().getClassLoader(),
+            impl.getClass().getInterfaces(), new ShopperProxy(impl));
+    shopper.saleWatermelon("小强");
+  	System.out.println(shopper.getClass());
+}
+```
+
+通过打印类型我们发现，就是我们之前看到的那种奇怪的类：`class com.sun.proxy.$Proxy0`，因此Mybatis其实也是这样的来实现的（肯定有人问了：Mybatis是直接代理接口啊，你这个不还是要把接口实现了吗？）那我们来改改，现在我们不代理任何类了，直接做接口实现：
+
+```java
+public class ShopperProxy implements InvocationHandler {
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        String customer = (String) args[0];
+        System.out.println(customer + "：哥们，这瓜多少钱一斤啊？");
+        System.out.println("老板：两块钱一斤。");
+        System.out.println(customer + "：你这瓜皮子是金子做的，还是瓜粒子是金子做的？");
+        System.out.println("老板：你瞅瞅现在哪有瓜啊，这都是大棚的瓜，你嫌贵我还嫌贵呢。");
+        System.out.println(customer + "：行，给我挑一个。");
+        return null;
+    }
+}
+```
+
+```java
+public static void main(String[] args) {
+    Shopper shopper = (Shopper) Proxy.newProxyInstance(Shopper.class.getClassLoader(),
+            new Class[]{ Shopper.class },   //因为本身就是接口，所以直接用就行
+            new ShopperProxy());
+    shopper.saleWatermelon("小强");
+    System.out.println(shopper.getClass());
+}
+```
+
+我们可以去看看Mybatis的源码。
+
+Mybatis的学习差不多就到这里为止了，不过，同样类型的框架还有很多，Mybatis属于半自动框架，SQL语句依然需要我们自己编写，虽然存在一定的麻烦，但是会更加灵活，而后面我们还会学习JPA，它是全自动的框架，你几乎见不到SQL的影子！
+
+***
+
+## 
 
 # 第二章 使用Maven管理项目
 
+Maven 翻译为"专家"、"内行"，是 Apache 下的一个纯 Java 开发的开源项目。基于项目对象模型（缩写：POM）概念，Maven利用一个中央信息片断能管理一个项目的构建、报告和文档等步骤。Maven 是一个项目管理工具，可以对 Java 项目进行构建、依赖管理。Maven 也可被用于构建和管理各种项目，例如 C#，Ruby，Scala 和其他语言编写的项目。Maven 曾是 Jakarta 项目的子项目，现为由 Apache 软件基金会主持的独立 Apache 项目。
+
+通过Maven，可以帮助我们做：
+
+* 项目的自动构建，包括代码的编译、测试、打包、安装、部署等操作。
+* 依赖管理，项目使用到哪些依赖，可以快速完成导入。
+
+我们之前并没有讲解如何将我们的项目打包为Jar文件运行，同时，我们导入依赖的时候，每次都要去下载对应的Jar包，这样其实是很麻烦的，并且还有可能一个Jar包依赖于另一个Jar包，就像之前使用JUnit一样，因此我们需要一个更加方便的包管理机制。
+
+Maven也需要安装环境，但是IDEA已经自带了Maven环境，因此我们不需要再去进行额外的环境安装（无IDEA也能使用Maven，但是配置过程很麻烦，并且我们现在使用的都是IDEA的集成开发环境，所以这里就不讲解Maven命令行操作了）我们直接创建一个新的Maven项目即可。
+
 ## 第一节 Maven 项目结构
 
+我们可以来看一下，一个Maven项目和我们普通的项目有什么区别：
 
+![img](./img/Maven项目结构2-1.png)
+
+那么首先，我们需要了解一下POM文件，它相当于是我们整个Maven项目的配置文件，它也是使用XML编写的：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>MavenTest</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+
+</project>
+```
+
+我们可以看到，Maven的配置文件是以`project`为根节点，而`modelVersion`定义了当前模型的版本，一般是4.0.0，我们不用去修改。
+
+`groupId`、`artifactId`、`version`这三个元素合在一起，用于唯一区别每个项目，别人如果需要将我们编写的代码作为依赖，那么就必须通过这三个元素来定位我们的项目，我们称为一个项目的基本坐标，所有的项目一般都有自己的Maven坐标，因此我们通过Maven导入其他的依赖只需要填写这三个基本元素就可以了，无需再下载Jar文件，而是Maven自动帮助我们下载依赖并导入。
+
+* `groupId` 一般用于指定组名称，命名规则一般和包名一致，比如我们这里使用的是`org.example`，一个组下面可以有很多个项目。
+* `artifactId` 一般用于指定项目在当前组中的唯一名称，也就是说在组中用于区分于其他项目的标记。
+* `version` 代表项目版本，随着我们项目的开发和改进，版本号也会不断更新，就像LOL一样，每次赛季更新都会有一个大版本更新，我们的Maven项目也是这样，我们可以手动指定当前项目的版本号，其他人使用我们的项目作为依赖时，也可以根本版本号进行选择（这里的SNAPSHOT代表快照，一般表示这是一个处于开发中的项目，正式发布项目一般只带版本号）
+
+`properties`中一般都是一些变量和选项的配置，我们这里指定了JDK的源代码和编译版本为1.8，无需进行修改。
 
 ## 第二节 Maven 依赖导入
+
+现在我们尝试使用Maven来帮助我们快速导入依赖，我们需要导入之前的JDBC驱动依赖、JUnit依赖、Mybatis依赖、Lombok依赖，那么如何使用Maven来管理依赖呢？
+
+我们可以创建一个`dependencies`节点：
+
+```xml
+<dependencies>
+    //里面填写的就是所有的依赖
+</dependencies>
+```
+
+那么现在就可以向节点中填写依赖了，那么我们如何知道每个依赖的坐标呢？我们可以在：https://mvnrepository.com/ 进行查询（可能打不开，建议用流量，或是直接百度某个项目的Maven依赖），我们直接搜索lombok即可，打开后可以看到已经给我们写出了依赖的坐标：
+
+```xml
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.22</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+我们直接将其添加到`dependencies`节点中即可，现在我们来编写一个测试用例看看依赖导入成功了没有：
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Student student = new Student("小明", 18);
+        System.out.println(student);
+    }
+}
+```
+
+```java
+@Data
+@AllArgsConstructor
+public class Student {
+    String name;
+    int age;
+}
+```
+
+项目运行成功，表示成功导入了依赖。那么，Maven是如何进行依赖管理呢，以致于如此便捷的导入依赖，我们来看看Maven项目的依赖管理流程：
+
+![img](./img/Maven依赖管理流程2-2.png)
+
+通过流程图我们得知，一个项目依赖一般是存储在中央仓库中，也有可能存储在一些其他的远程仓库（私服），几乎所有的依赖都被放到了中央仓库中，因此，Maven可以直接从中央仓库中下载大部分的依赖（Maven第一次导入依赖是需要联网的），远程仓库中下载之后 ，会暂时存储在本地仓库，我们会发现我们本地存在一个`.m2`文件夹，这就是Maven本地仓库文件夹，默认建立在C盘，如果你C盘空间不足，会出现问题！
+
+在下次导入依赖时，如果Maven发现本地仓库中就已经存在某个依赖，那么就不会再去远程仓库下载了。
+
+可能在导入依赖时，小小伙伴们会出现卡顿的问题，我们建议配置一下IDEA自带的Maven插件远程仓库地址，我们打开IDEA的安装目录，找到`安装根目录/plugins/maven/lib/maven3/conf`文件夹，找到`settings.xml`文件，打开编辑：
+
+找到mirros标签，添加以下内容：
+
+```xml
+<mirror>
+      <id>nexus-aliyun</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Nexus aliyun</name>
+      <url>http://maven.aliyun.com/nexus/content/groups/public</url>
+</mirror> 
+```
+
+这样，我们就将默认的远程仓库地址（国外），配置为国内的阿里云仓库地址了（依赖的下载速度就会快起来了）
 
 
 
 ## 第三节 Maven 依赖作用域
 
+除了三个基本的属性用于定位坐标外，依赖还可以添加以下属性：
 
+- **type**：依赖的类型，对于项目坐标定义的packaging。大部分情况下，该元素不必声明，其默认值为jar
+- **scope**：依赖的范围（作用域，着重讲解）
+- **optional**：标记依赖是否可选
+- **exclusions**：用来排除传递性依赖（一个项目有可能依赖于其他项目，就像我们的项目，如果别人要用我们的项目作为依赖，那么就需要一起下载我们项目的依赖，如Lombok）
+
+我们着重来讲解一下`scope`属性，它决定了依赖的作用域范围：
+
+* **compile** ：为默认的依赖有效范围。如果在定义依赖关系的时候，没有明确指定依赖有效范围的话，则默认采用该依赖有效范围。此种依赖，在编译、运行、测试时均有效。
+* **provided** ：在编译、测试时有效，但是在运行时无效，也就是说，项目在运行时，不需要此依赖，比如我们上面的Lombok，我们只需要在编译阶段使用它，编译完成后，实际上已经转换为对应的代码了，因此Lombok不需要在项目运行时也存在。
+* **runtime** ：在运行、测试时有效，但是在编译代码时无效。比如我们如果需要自己写一个JDBC实现，那么肯定要用到JDK为我们指定的接口，但是实际上在运行时是不用自带JDK的依赖，因此只保留我们自己写的内容即可。
+* **test** ：只在测试时有效，例如：JUnit，我们一般只会在测试阶段使用JUnit，而实际项目运行时，我们就用不到测试了，那么我们来看看，导入JUnit的依赖：
+
+同样的，我们可以在网站上搜索Junit的依赖，我们这里导入最新的JUnit5作为依赖：
+
+```xml
+<dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <version>5.8.1</version>
+    <scope>test</scope>
+</dependency>
+```
+
+我们所有的测试用例全部编写到Maven项目给我们划分的test目录下，位于此目录下的内容不会在最后被打包到项目中，只用作开发阶段测试使用：
+
+```java
+public class MainTest {
+
+    @Test
+    public void test(){
+        System.out.println("测试");
+      	//Assert在JUnit5时名称发生了变化Assertions
+        Assertions.assertArrayEquals(new int[]{1, 2, 3}, new int[]{1, 2});
+    }
+}
+```
+
+因此，一般仅用作测试的依赖如JUnit只保留在测试中即可，那么现在我们再来添加JDBC和Mybatis的依赖：
+
+```xml
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>8.0.27</version>
+</dependency>
+<dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.7</version>
+</dependency>
+```
+
+我们发现，Maven还给我们提供了一个`resource`文件夹，我们可以将一些静态资源，比如配置文件，放入到这个文件夹中，项目在打包时会将资源文件夹中文件一起打包的Jar中，比如我们在这里编写一个Mybatis的配置文件：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <setting name="cacheEnabled" value="true"/>
+        <setting name="logImpl" value="JDK_LOGGING" />
+    </settings>
+    <!-- 需要在environments的上方 -->
+    <typeAliases>
+        <package name="com.test.entity"/>
+    </typeAliases>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/study"/>
+                <property name="username" value="test"/>
+                <property name="password" value="123456"/>
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper class="com.test.mapper.TestMapper"/>
+    </mappers>
+</configuration>
+```
+
+现在我们创建一下测试用例，顺便带大家了解一下Junit5的一些比较方便的地方：
+
+```java
+public class MainTest {
+
+    //因为配置文件位于内部，我们需要使用Resources类的getResourceAsStream来获取内部的资源文件
+    private static SqlSessionFactory factory;
+
+    //在JUnit5中@Before被废弃，它被细分了：
+    @BeforeAll // 一次性开启所有测试案例只会执行一次 (方法必须是static)
+    // @BeforeEach 一次性开启所有测试案例每个案例开始之前都会执行一次
+    @SneakyThrows
+    public static void before(){
+        factory = new SqlSessionFactoryBuilder()
+                .build(Resources.getResourceAsStream("mybatis.xml"));
+    }
+
+
+    @DisplayName("Mybatis数据库测试")  //自定义测试名称
+    @RepeatedTest(3)  //自动执行多次测试
+    public void test(){
+        try (SqlSession sqlSession = factory.openSession(true)){
+            TestMapper testMapper = sqlSession.getMapper(TestMapper.class);
+            System.out.println(testMapper.getStudentBySid(1));
+        }
+    }
+}
+```
+
+那么就有人提问了，如果我需要的依赖没有上传的远程仓库，而是只有一个Jar怎么办呢？我们可以使用第四种作用域：
+
+* **system**：作用域和provided是一样的，但是它不是从远程仓库获取，而是直接导入本地Jar包：
+
+```xml
+<dependency>
+     <groupId>javax.jntm</groupId>
+     <artifactId>lbwnb</artifactId>
+     <version>2.0</version>
+     <scope>system</scope>
+     <systemPath>C://学习资料/4K高清无码/test.jar</systemPath>
+</dependency>
+```
+
+比如上面的例子，如果scope为system，那么我们需要添加一个systemPath来指定jar文件的位置，这里就不再演示了。
 
 ## 第四节 Maven 可选依赖
 
+当项目中的某些依赖不希望被使用此项目作为依赖的项目使用时，我们可以给依赖添加`optional`标签表示此依赖是可选的，默认在导入依赖时，不会导入可选的依赖：
 
+```xml
+<optional>true</optional>
+```
+
+比如Mybatis的POM文件中，就存在大量的可选依赖：
+
+```xml
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>slf4j-api</artifactId>
+  <version>1.7.30</version>
+  <optional>true</optional>
+</dependency>
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>slf4j-log4j12</artifactId>
+  <version>1.7.30</version>
+  <optional>true</optional>
+</dependency>
+<dependency>
+  <groupId>log4j</groupId>
+  <artifactId>log4j</artifactId>
+  <version>1.2.17</version>
+  <optional>true</optional>
+</dependency>
+ ...
+```
+
+由于Mybatis要支持多种类型的日志，需要用到很多种不同的日志框架，因此需要导入这些依赖来做兼容，但是我们项目中并不一定会使用这些日志框架作为Mybatis的日志打印器，因此这些日志框架仅Mybatis内部做兼容需要导入使用，而我们可以选择不使用这些框架或是选择其中一个即可，也就是说我们导入Mybatis之后想用什么日志框架再自己加就可以了。
 
 ## 第五节 Maven 排除依赖
 
@@ -1150,7 +1554,9 @@ public interface MyMapper {
 
 
 
-# 第三章 拓展插件与框架
+
+
+# 第三章 常用插件与框架
 
 ## 第一节 Lombok
 
@@ -1256,20 +1662,543 @@ Java 的编译过程可以分成三个阶段：
 
 ## 第二节 JUnit
 
+首先一问：我们为什么需要单元测试？
+
+随着我们的项目逐渐变大，比如我们之前编写的图书管理系统，我们都是边在写边在测试，而我们当时使用的测试方法，就是直接在主方法中运行测试，但是，在很多情况下，我们的项目可能会很庞大，不可能每次都去完整地启动一个项目来测试某一个功能，这样显然会降低我们的开发效率，因此，我们需要使用单元测试来帮助我们针对于某个功能或是某个模块单独运行代码进行测试，而不是启动整个项目。
+
+同时，在我们项目的维护过程中，难免会涉及到一些原有代码的修改，很有可能出现改了代码导致之前的功能出现问题（牵一发而动全身），而我们又不一定能立即察觉到，因此，我们可以提前保存一些测试用例，每次完成代码后都可以跑一遍测试用例，来确保之前的功能没有因为后续的修改而出现问题。
+
+我们还可以利用单元测试来评估某个模块或是功能的耗时和性能，快速排查导致程序运行缓慢的问题，这些都可以通过单元测试来完成，可见单元测试对于开发的重要性。
+
 ### 1. 尝试 JUnit
+
+首先需要导入JUnit依赖，我们在这里使用Junit4进行介绍，最新的Junit5放到Maven板块一起讲解，Jar包已经放在视频下方简介中，直接去下载即可。同时IDEA需要安装JUnit插件（默认是已经捆绑安装的，因此无需多余配置）
+
+现在我们创建一个新的类，来编写我们的单元测试用例：
+
+```java
+public class TestMain {
+    @Test
+    public void method(){
+        System.out.println("我是测试用例1");
+    }
+
+    @Test
+    public void method2(){
+        System.out.println("我是测试用例2");
+    }
+}
+```
+
+我们可以点击类前面的测试按钮，或是单个方法前的测试按钮，如果点击类前面的测试按钮，会执行所有的测试用例。
+
+运行测试后，我们发现控制台得到了一个测试结果，显示为绿色表示测试通过。
+
+只需要通过打上`@Test`注解，即可将一个方法标记为测试案例，我们可以直接运行此测试案例，但是我们编写的测试方法有以下要求：
+
+* 方法必须是public的
+* 不能是静态方法
+* 返回值必须是void
+* 必须是没有任何参数的方法
+
+对于一个测试案例来说，我们肯定希望测试的结果是我们所期望的一个值，因此，如果测试的结果并不是我们所期望的结果，那么这个测试就应该没有成功通过！
+
+我们可以通过断言工具类来进行判定：
+
+```java
+public class TestMain {
+    @Test
+    public void method(){
+        System.out.println("我是测试案例！");
+        Assert.assertEquals(1, 2);    //参数1是期盼值，参数2是实际测试结果值
+    }
+}
+```
+
+通过运行代码后，我们发现测试过程中抛出了一个错误，并且IDEA给我们显示了期盼结果和测试结果，那么现在我们来测试一个案例，比如我们想查看冒泡排序的编写是否正确：
+
+```java
+@Test
+public void method(){
+    int[] arr = {0, 4, 5, 2, 6, 9, 3, 1, 7, 8};
+
+    //错误的冒泡排序
+    for (int i = 0; i < arr.length - 1; i++) {
+        for (int j = 0; j < arr.length - 1 - i; j++) {
+            if(arr[j] > arr[j + 1]){
+                int tmp = arr[j];
+                arr[j] = arr[j+1];
+                // arr[j+1] = tmp;
+            }
+        }
+    }
+
+    Assert.assertArrayEquals(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, arr);
+}
+```
+
+通过测试，我们发现得到的结果并不是我们想要的结果，因此现在我们需要去修改为正确的冒泡排序，修改后，测试就能正确通过了。我们还可以再通过一个案例来更加深入地了解测试，现在我们想测试从数据库中取数据是否为我们预期的数据：
+
+```java
+@Test
+public void method(){
+    try (SqlSession sqlSession = MybatisUtil.getSession(true)){
+        TestMapper mapper = sqlSession.getMapper(TestMapper.class);
+        Student student = mapper.getStudentBySidAndSex(1, "男");
+
+        Assert.assertEquals(new Student().setName("小明").setSex("男").setSid(1), student);
+    }
+}
+```
+
+那么如果我们在进行所有的测试之前需要做一些前置操作该怎么办呢，一种办法是在所有的测试用例前面都加上前置操作，但是这样显然是很冗余的，因为一旦发生修改就需要挨个进行修改，因此我们需要更加智能的方法，我们可以通过`@Before`注解来添加测试用例开始之前的前置操作：
+
+```java
+public class TestMain {
+
+    private SqlSessionFactory sqlSessionFactory;
+    @Before
+    public void before(){
+        System.out.println("测试前置正在初始化...");
+        try {
+            sqlSessionFactory = new SqlSessionFactoryBuilder()
+                    .build(new FileInputStream("mybatis-config.xml"));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        System.out.println("测试初始化完成，正在开始测试案例...");
+    }
+
+    @Test
+    public void method1(){
+        try (SqlSession sqlSession = sqlSessionFactory.openSession(true)){
+            TestMapper mapper = sqlSession.getMapper(TestMapper.class);
+            Student student = mapper.getStudentBySidAndSex(1, "男");
+
+            Assert.assertEquals(new Student().setName("小明").setSex("男").setSid(1), student);
+            System.out.println("测试用例1通过！");
+        }
+    }
+
+    @Test
+    public void method2(){
+        try (SqlSession sqlSession = sqlSessionFactory.openSession(true)){
+            TestMapper mapper = sqlSession.getMapper(TestMapper.class);
+            Student student = mapper.getStudentBySidAndSex(2, "女");
+
+            Assert.assertEquals(new Student().setName("小红").setSex("女").setSid(2), student);
+            System.out.println("测试用例2通过！");
+        }
+    }
+}
+```
+
+同理，在所有的测试完成之后，我们还想添加一个收尾的动作，那么只需要使用`@After`注解即可添加结束动作：
+
+```java
+@After
+public void after(){
+    System.out.println("测试结束，收尾工作正在进行...");
+}
+```
+
+有关JUnit的使用我们就暂时只介绍这么多。
 
 
 
 ## 第三节 JUL 日志系统
 
+首先一问：我们为什么需要日志系统？
+
+我们之前一直都在使用`System.out.println`来打印信息，但是，如果项目中存在大量的控制台输出语句，会显得很凌乱，而且日志的粒度是不够细的，假如我们现在希望，项目只在debug的情况下打印某些日志，而在实际运行时不打印日志，采用直接输出的方式就很难实现了，因此我们需要使用日志框架来规范化日志输出。
+
+而JDK为我们提供了一个自带的日志框架，位于`java.util.logging`包下，我们可以使用此框架来实现日志的规范化打印，使用起来非常简单：
+
+```java
+public class Main {
+    public static void main(String[] args) {
+      	// 首先获取日志打印器
+        Logger logger = Logger.getLogger(Main.class.getName());
+      	// 调用info来输出一个普通的信息，直接填写字符串即可
+        logger.info("我是普通的日志");
+    }
+}
+```
+
+我们可以在主类中使用日志打印，得到日志的打印结果：
+
+```tex
+十一月 15, 2021 12:55:37 下午 com.test.Main main
+信息: 我是普通的日志
+```
+
+我们发现，通过日志输出的结果会更加规范。
+
 ### 1. JUL 日志讲解
+
+日志分为7个级别，详细信息我们可以在Level类中查看：
+
+*  SEVERE（最高值）- 一般用于代表严重错误
+*  WARNING  - 一般用于表示某些警告，但是不足以判断为错误
+*  INFO （默认级别）  -  常规消息
+*  CONFIG
+*  FINE
+*  FINER
+*  FINEST（最低值）
+
+我们之前通过`info`方法直接输出的结果就是使用的默认级别的日志，我们可以通过`log`方法来设定该条日志的输出级别：
+
+```java
+public static void main(String[] args) {
+    Logger logger = Logger.getLogger(Main.class.getName());
+    logger.log(Level.SEVERE, "严重的错误", new IOException("我就是错误"));
+    logger.log(Level.WARNING, "警告的内容");
+    logger.log(Level.INFO, "普通的信息");
+    logger.log(Level.CONFIG, "级别低于普通信息");
+}
+```
+
+我们发现，级别低于默认级别的日志信息，无法输出到控制台，我们可以通过设置来修改日志的打印级别：
+
+```java
+public static void main(String[] args) {
+    Logger logger = Logger.getLogger(Main.class.getName());
+
+    //修改日志级别
+    logger.setLevel(Level.CONFIG);
+    //不使用父日志处理器
+    logger.setUseParentHandlers(false);
+    //使用自定义日志处理器
+    ConsoleHandler handler = new ConsoleHandler();
+    handler.setLevel(Level.CONFIG);
+    logger.addHandler(handler);
+
+    logger.log(Level.SEVERE, "严重的错误", new IOException("我就是错误"));
+    logger.log(Level.WARNING, "警告的内容");
+    logger.log(Level.INFO, "普通的信息");
+    logger.log(Level.CONFIG, "级别低于普通信息");
+}
+```
+
+每个`Logger`都有一个父日志打印器，我们可以通过`getParent()`来获取：
+
+```java
+public static void main(String[] args) throws IOException {
+    Logger logger = Logger.getLogger(Main.class.getName());
+    System.out.println(logger.getParent().getClass());
+}
+```
+
+我们发现，得到的是`java.util.logging.LogManager$RootLogger`这个类，它默认使用的是ConsoleHandler，且日志级别为INFO，由于每一个日志打印器都会直接使用父类的处理器，因此我们之前需要关闭父类然后使用我们自己的处理器。
+
+我们通过使用自己日志处理器来自定义级别的信息打印到控制台，当然，日志处理器不仅仅只有控制台打印，我们也可以使用文件处理器来处理日志信息，我们继续添加一个处理器：
+
+```java
+//添加输出到本地文件
+FileHandler fileHandler = new FileHandler("test.log");
+fileHandler.setLevel(Level.WARNING);
+logger.addHandler(fileHandler);
+```
+
+注意，这个时候就有两个日志处理器了，因此控制台和文件的都会生效。如果日志的打印格式我们不喜欢，我们还可以自定义打印格式，比如我们控制台处理器就默认使用的是`SimpleFormatter`，而文件处理器则是使用的`XMLFormatter`，我们可以自定义：
+
+```java
+//使用自定义日志处理器(控制台)
+ConsoleHandler handler = new ConsoleHandler();
+handler.setLevel(Level.CONFIG);
+handler.setFormatter(new XMLFormatter());
+logger.addHandler(handler);
+```
+
+我们可以直接配置为想要的打印格式，如果这些格式还不能满足你，那么我们也可以自行实现：
+
+```java
+public static void main(String[] args) throws IOException {
+    Logger logger = Logger.getLogger(Main.class.getName());
+    logger.setUseParentHandlers(false);
+
+    //为了让颜色变回普通的颜色，通过代码块在初始化时将输出流设定为System.out
+    ConsoleHandler handler = new ConsoleHandler(){{
+        setOutputStream(System.out);
+    }};
+    //创建匿名内部类实现自定义的格式
+    handler.setFormatter(new Formatter() {
+        @Override
+        public String format(LogRecord record) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+            String time = format.format(new Date(record.getMillis()));  //格式化日志时间
+            String level = record.getLevel().getName();  // 获取日志级别名称
+            // String level = record.getLevel().getLocalizedName();   // 获取本地化名称（语言跟随系统）
+            String thread = String.format("%10s", Thread.currentThread().getName());  //线程名称（做了格式化处理，留出10格空间）
+            long threadID = record.getThreadID();   //线程ID
+            String className = String.format("%-20s", record.getSourceClassName());  //发送日志的类名
+            String msg = record.getMessage();   //日志消息
+
+          //\033[33m作为颜色代码，30~37都有对应的颜色，38是没有颜色，IDEA能显示，但是某些地方可能不支持
+            return "\033[38m" + time + "  \033[33m" + level + " \033[35m" + threadID
+                    + "\033[38m --- [" + thread + "] \033[36m" + className + "\033[38m : " + msg + "\n";
+        }
+    });
+    logger.addHandler(handler);
+
+    logger.info("我是测试消息1...");
+    logger.log(Level.INFO, "我是测试消息2...");
+    logger.log(Level.WARNING, "我是测试消息3...");
+}
+```
+
+日志可以设置过滤器，如果我们不希望某些日志信息被输出，我们可以配置过滤规则：
+
+```java
+public static void main(String[] args) throws IOException {
+    Logger logger = Logger.getLogger(Main.class.getName());
+
+    //自定义过滤规则
+    logger.setFilter(record -> !record.getMessage().contains("普通"));
+
+    logger.log(Level.SEVERE, "严重的错误", new IOException("我就是错误"));
+    logger.log(Level.WARNING, "警告的内容");
+    logger.log(Level.INFO, "普通的信息");
+}
+```
+
+实际上，整个日志的输出流程如下：
+
+![img](./img/日志输出流3-2.png)
 
 ### 2. Properties 配置文件
 
+Properties文件是Java的一种配置文件，我们之前学习了XML，但是我们发现XML配置文件读取实在是太麻烦，那么能否有一种简单一点的配置文件呢？我们可以使用Properties文件：
+
+```properties
+name=Test
+desc=Description
+```
+
+该文件配置很简单，格式为`配置项=配置值`，我们可以直接通过`Properties`类来将其读取为一个类似于Map一样的对象：
+
+```java
+public static void main(String[] args) throws IOException {
+    Properties properties = new Properties();
+    properties.load(new FileInputStream("test.properties"));
+    System.out.println(properties);
+}
+```
+
+我们发现，`Properties`类是继承自`Hashtable`，而`Hashtable`是实现的Map接口，也就是说，`Properties`本质上就是一个Map一样的结构，它会把所有的配置项映射为一个Map，这样我们就可以快速地读取对应配置的值了。
+
+我们也可以将已经存在的Properties对象放入输出流进行保存，我们这里就不保存文件了，而是直接打印到控制台，我们只需要提供输出流即可：
+
+```java
+public static void main(String[] args) throws IOException {
+    Properties properties = new Properties();
+  	// properties.setProperty("test", "lbwnb");  //和put效果一样
+    properties.put("test", "lbwnb");
+    properties.store(System.out, "????");
+  	//properties.storeToXML(System.out, "????");  保存为XML格式
+}
+```
+
+我们可以通过`System.getProperties()`获取系统的参数，我们来看看：
+
+```java
+public static void main(String[] args) throws IOException {
+    System.getProperties().store(System.out, "系统信息：");
+}
+```
+
 ### 3. 编写日志配置文件
+
+我们可以通过进行配置文件来规定日志打印器的一些默认值：
+
+```properties
+# RootLogger 的默认处理器为
+handlers= java.util.logging.ConsoleHandler
+# RootLogger 的默认的日志级别
+.level= CONFIG
+```
+
+我们来尝试使用配置文件来进行配置：
+
+```java
+public static void main(String[] args) throws IOException {
+    //获取日志管理器
+    LogManager manager = LogManager.getLogManager();
+    //读取我们自己的配置文件
+    manager.readConfiguration(new FileInputStream("logging.properties"));
+    //再获取日志打印器
+    Logger logger = Logger.getLogger(Main.class.getName());
+    logger.log(Level.CONFIG, "我是一条日志信息");   //通过自定义配置文件，我们发现默认级别不再是INFO了
+}
+```
+
+我们也可以去修改`ConsoleHandler`的默认配置：
+
+```properties
+# 指定默认日志级别 开启所有级别的记录
+java.util.logging.ConsoleHandler.level = ALL
+# 指定默认日志消息格式
+java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
+# 指定默认的字符集
+java.util.logging.ConsoleHandler.encoding = UTF-8
+```
+
+其实，我们阅读`ConsoleHandler`的源码就会发现，它就是通过读取配置文件来进行某些参数设置：
+
+```java
+// Private method to configure a ConsoleHandler from LogManager
+// properties and/or default values as specified in the class
+// javadoc.
+private void configure() {
+    LogManager manager = LogManager.getLogManager();
+    String cname = getClass().getName();
+
+    setLevel(manager.getLevelProperty(cname +".level", Level.INFO));
+    setFilter(manager.getFilterProperty(cname +".filter", null));
+    setFormatter(manager.getFormatterProperty(cname +".formatter", new SimpleFormatter()));
+    try {
+        setEncoding(manager.getStringProperty(cname +".encoding", null));
+    } catch (Exception ex) {
+        try {
+            setEncoding(null);
+        } catch (Exception ex2) {
+            // doing a setEncoding with null should always work.
+            // assert false;
+        }
+    }
+}
+```
 
 ### 4. 使用 Lombok 快速开启日志
 
+我们发现，如果我们现在需要全面使用日志系统，而不是传统的直接打印，那么就需要在每个类都去编写获取Logger的代码，这样显然是很冗余的，能否简化一下这个流程呢？
+
+前面我们学习了Lombok，我们也体会到Lombok给我们带来的便捷，我们可以通过一个注解快速生成构造方法、Getter和Setter，同样的，Logger也是可以使用Lombok快速生成的。
+
+```java
+@Log
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("自动生成的Logger名称："+log.getName());
+        log.info("我是日志信息");
+    }
+}
+```
+
+只需要添加一个`@Log`注解即可，添加后，我们可以直接使用一个静态变量log，而它就是自动生成的Logger。我们也可以手动指定名称：
+
+```java
+@Log(topic = "打工是不可能打工的")
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("自动生成的Logger名称："+log.getName());
+        log.info("我是日志信息");
+    }
+}
+```
+
 ### 5. MyBatis 日志系统
 
-### 
+Mybatis也有日志系统，它详细记录了所有的数据库操作等，但是我们在前面的学习中没有开启它，现在我们学习了日志之后，我们就可以尝试开启Mybatis的日志系统，来监控所有的数据库操作，要开启日志系统，我们需要进行配置：
+
+```xml
+<setting name="logImpl" value="STDOUT_LOGGING" />
+```
+
+`logImpl`包括很多种配置项，包括 SLF4J | LOG4J | LOG4J2 | JDK_LOGGING | COMMONS_LOGGING | STDOUT_LOGGING | NO_LOGGING，而默认情况下是未配置，也就是说不打印。我们这里将其设定为STDOUT_LOGGING表示直接使用标准输出将日志信息打印到控制台，我们编写一个测试案例来看看效果：
+
+```java
+public class TestMain {
+
+    private SqlSessionFactory sqlSessionFactory;
+    @Before
+    public void before(){
+        try {
+            sqlSessionFactory = new SqlSessionFactoryBuilder()
+                    .build(new FileInputStream("mybatis-config.xml"));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void test(){
+        try(SqlSession sqlSession = sqlSessionFactory.openSession(true)){
+            TestMapper mapper = sqlSession.getMapper(TestMapper.class);
+            System.out.println(mapper.getStudentBySidAndSex(1, "男"));
+            System.out.println(mapper.getStudentBySidAndSex(1, "男"));
+        }
+    }
+}
+```
+
+我们发现，两次获取学生信息，只有第一次打开了数据库连接，而第二次并没有。
+
+现在我们学习了日志系统，那么我们来尝试使用日志系统输出Mybatis的日志信息：
+
+```xml
+<setting name="logImpl" value="JDK_LOGGING" />
+```
+
+将其配置为JDK_LOGGING表示使用JUL进行日志打印，因为Mybatis的日志级别都比较低，因此我们需要设置一下`logging.properties`默认的日志级别：
+
+```properties
+handlers= java.util.logging.ConsoleHandler
+.level= ALL
+java.util.logging.ConsoleHandler.level = ALL
+```
+
+代码编写如下：
+
+```java
+@Log
+public class TestMain {
+
+    private SqlSessionFactory sqlSessionFactory;
+    @Before
+    public void before(){
+        try {
+            sqlSessionFactory = new SqlSessionFactoryBuilder()
+                    .build(new FileInputStream("mybatis-config.xml"));
+            LogManager manager = LogManager.getLogManager();
+            manager.readConfiguration(new FileInputStream("logging.properties"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void test(){
+        try(SqlSession sqlSession = sqlSessionFactory.openSession(true)){
+            TestMapper mapper = sqlSession.getMapper(TestMapper.class);
+            log.info(mapper.getStudentBySidAndSex(1, "男").toString());
+            log.info(mapper.getStudentBySidAndSex(1, "男").toString());
+        }
+    }
+}
+```
+
+但是我们发现，这样的日志信息根本没法看，因此我们需要修改一下日志的打印格式，我们自己创建一个格式化类：
+
+```java
+public class TestFormatter extends Formatter {
+    @Override
+    public String format(LogRecord record) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        String time = format.format(new Date(record.getMillis()));  //格式化日志时间
+        return time + " : " + record.getMessage() + "\n";
+    }
+}
+```
+
+现在再来修改一下默认的格式化实现：
+
+```properties
+handlers= java.util.logging.ConsoleHandler
+.level= ALL
+java.util.logging.ConsoleHandler.level = ALL
+java.util.logging.ConsoleHandler.formatter = com.test.TestFormatter
+```
+
+现在就好看多了，当然，我们还可以继续为Mybatis添加文件日志，这里就不做演示了。
+
