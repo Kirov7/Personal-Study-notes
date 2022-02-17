@@ -7,7 +7,7 @@ Notes taken during individual study sessions, Unscheduled update<br>
 - DataBase 
 - JavaScrip 
 - Servlet/JSP
-- themeleaf (Basic version)
+- thymeleaf (Basic version)
 - Git
 - Mybatis (Basic version)
 - Spring (Basic version)
