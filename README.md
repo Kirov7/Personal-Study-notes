@@ -6,8 +6,16 @@ Notes taken during individual study sessions, Unscheduled update<br>
 - JavaSE 
 - DataBase 
 - JavaScrip 
+- Servlet/JSP
+- themeleaf (Basic version)
+- Git
+- Mybatis (Basic version)
+- Spring (Basic version)
+- SpirngMVC (Basic version)
+- SpringSecurity (Basic version)
 
 ## 正在学习：
-- JavaWeb
-- Linux
-- Git
+- SpringBoot (Basic version)
+- JPA (Basic version)
+- Redis (Basic version)
+
