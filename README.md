@@ -18,5 +18,5 @@ Notes taken during individual study sessions, Unscheduled update<br>
 - Redis (Basic version)
 
 ## 正在学习：
-
+- Concurrent programming
 
