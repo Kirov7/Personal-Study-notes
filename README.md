@@ -13,9 +13,10 @@ Notes taken during individual study sessions, Unscheduled update<br>
 - Spring (Basic version)
 - SpirngMVC (Basic version)
 - SpringSecurity (Basic version)
-
-## 正在学习：
 - SpringBoot (Basic version)
 - JPA (Basic version)
 - Redis (Basic version)
+
+## 正在学习：
+
 
