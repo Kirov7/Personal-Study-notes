@@ -1286,7 +1286,7 @@ InnoDB与MyISAM实现的不同之处：
 * 数据本身就是索引的一部分（所以这里建议主键使用自增）
 * 非主键索引的数据实际上存储的是对应记录的主键值（因此InnoDB必须有主键，若没有也会自动查找替代）
 
-> 注：可阅读一下文章 [MySQL InnoDB数据表缺少主键会怎样 - 知乎 ](https://zhuanlan.zhihu.com/p/98084061)
+> 注：可阅读此文章进行适当拓展 [MySQL InnoDB数据表缺少主键会怎样 - 知乎 ](https://zhuanlan.zhihu.com/p/98084061)
 
 
 
