@@ -19,4 +19,5 @@ Notes taken during individual study sessions, Unscheduled update<br>
 
 ## 正在学习：
 - Concurrent programming
+- Java Virtual Machine
 
