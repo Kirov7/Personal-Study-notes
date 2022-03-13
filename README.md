@@ -16,9 +16,9 @@ Notes taken during individual study sessions, Unscheduled update<br>
 - SpringBoot (Basic version)
 - JPA (Basic version)
 - Redis (Basic version)
+- Java Virtual Machine(Basic version)
 
 ## 正在学习：
 - Concurrent programming
-- Java Virtual Machine
 - MySQL optimization  
 
